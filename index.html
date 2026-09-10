@@ -79,8 +79,9 @@ p.lede { margin: 0; color: var(--ink-soft); max-width: 44rem; }
 
 /* ============ SCENE ART ============ */
 .stage-art { position: relative; border: 1px solid var(--edge); border-radius: var(--radius); overflow: hidden; background: #05080b; }
+/* Height always follows the viewBox aspect, so nothing is ever cropped.
+   Banner shape is set by how wide the viewBox is — see stageArt(). */
 .stage-art svg { display: block; width: 100%; height: auto; }
-.stage-art.short svg { max-height: 190px; }
 .sil { fill: var(--sil); stroke: currentColor; stroke-width: 1.6; stroke-opacity: 0.6; stroke-linejoin: round; }
 .sil.solid { stroke-opacity: 0.28; }
 .glowdot { fill: currentColor; filter: drop-shadow(0 0 3px currentColor); }
@@ -93,7 +94,7 @@ p.lede { margin: 0; color: var(--ink-soft); max-width: 44rem; }
 @keyframes bob     { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @keyframes pulse   { 0%,100% { opacity: 0.45; } 50% { opacity: 1; } }
 @keyframes drift   { from { transform: translateY(-30px); } to { transform: translateY(210px); } }
-@keyframes cloudrun{ from { transform: translateX(-40px); } to { transform: translateX(280px); } }
+@keyframes cloudrun{ from { transform: translateX(-40px); } to { transform: translateX(780px); } }
 
 .g-body { animation: breathe 4.2s ease-in-out infinite; transform-origin: 50% 90%; }
 .g-tail { animation: sway 5.4s ease-in-out infinite; transform-origin: 78% 62%; }
@@ -493,23 +494,37 @@ const CITY = (function(){
   return out;
 })();
 
-function sceneSVG(key, id){
+/* Scenes are authored 240 wide. For wide banners the landscape layers are
+   tiled side by side — the far and near polygons start and end at matching
+   heights, so the joins do not show. */
+function sceneSVG(key, id, tiles){
   const s = SCENES[key] || SCENES.ocean;
+  tiles = tiles || 1;
+  const W = 240 * tiles;
+  const band = (inner, cls, fill) => {
+    let g = "";
+    for (let t = 0; t < tiles; t++) g += '<g transform="translate(' + (240 * t) + ',0)">' + inner + "</g>";
+    return '<g class="' + cls + '"' + (fill ? ' fill="' + fill + '"' : "") + ">" + g + "</g>";
+  };
   let out = '<defs><linearGradient id="sky'+id+'" x1="0" y1="0" x2="0" y2="1">' +
     '<stop offset="0%" stop-color="'+s.sky[0]+'"/><stop offset="100%" stop-color="'+s.sky[1]+'"/></linearGradient></defs>' +
-    '<rect x="0" y="0" width="240" height="180" fill="url(#sky'+id+')"/>';
-  if (s.orb) out += '<circle cx="'+s.orb[0]+'" cy="'+s.orb[1]+'" r="'+s.orb[2]+'" fill="'+s.orb[3]+'" opacity="0.5"/>';
+    '<rect x="0" y="0" width="'+W+'" height="180" fill="url(#sky'+id+')"/>';
+  if (s.orb) {
+    const ox = s.orb[0] + 240 * Math.floor(tiles / 2);
+    out += '<circle cx="'+ox+'" cy="'+s.orb[1]+'" r="'+s.orb[2]+'" fill="'+s.orb[3]+'" opacity="0.5"/>';
+  }
   for (let i = 0; i < (s.cloud || 0); i++) {
     const y = 26 + i * 22, d = 26 + i * 9;
     out += '<ellipse class="cloud" cx="0" cy="'+y+'" rx="34" ry="7" fill="#ffffff" style="animation-duration:'+d+'s;animation-delay:-'+(i*7)+'s"/>';
   }
-  out += '<g class="bgfar" fill="#0e1a24">' + (s.far === "city" ? CITY : '<polygon points="'+s.far+'"/>') + '</g>';
-  for (let i = 0; i < (s.pcount || 0); i++) {
-    const x = (i * 37 + 11) % 236, r = 0.8 + (i % 3) * 0.5, d = 5 + (i % 5) * 2.4;
+  out += band(s.far === "city" ? CITY : '<polygon points="'+s.far+'"/>', "bgfar", "#0e1a24");
+  const pc = (s.pcount || 0) * tiles;
+  for (let i = 0; i < pc; i++) {
+    const x = (i * 37 + 11) % (W - 4), r = 0.8 + (i % 3) * 0.5, d = 5 + (i % 5) * 2.4;
     out += '<circle class="particle" cx="'+x+'" cy="0" r="'+r+'" fill="'+(s.pcolor||"#fff")+'" opacity="0.5" ' +
            'style="animation-duration:'+d+'s;animation-delay:-'+((i*0.7)%d).toFixed(1)+'s"/>';
   }
-  out += '<g class="bgnear"><polygon points="'+s.near+'" fill="'+s.nearFill+'"/></g>';
+  out += band('<polygon points="'+s.near+'"/>', "bgnear", s.nearFill);
   return out;
 }
 
@@ -521,7 +536,7 @@ function titanSVG(id, color, opts){
   const dots = (r.dots || []).map(d =>
     '<circle class="glowdot g-glow" cx="'+d[0]+'" cy="'+d[1]+'" r="'+d[2]+'"/>').join("");
   const tf = [];
-  if (opts.flip) tf.push("translate(240,0) scale(-1,1)");
+  if (opts.flip) tf.push("translate(" + (opts.flipW || 240) + ",0) scale(-1,1)");
   if (opts.scale && opts.scale !== 1) tf.push("translate(" + (opts.dx||0) + "," + (opts.dy||0) + ") scale(" + opts.scale + ")");
   else if (opts.dx || opts.dy) tf.push("translate(" + (opts.dx||0) + "," + (opts.dy||0) + ")");
   return '<g style="color:' + color + '"' + (tf.length ? ' transform="' + tf.join(" ") + '"' : "") +
@@ -529,13 +544,19 @@ function titanSVG(id, color, opts){
 }
 
 let artSeq = 0;
-function stageArt(sceneKey, titanId, color, cls){
+/* mode: "strip" = wide 4:1 banner above a typing exercise
+         "hero"  = 8:3 banner for story chapters and storyline pages
+         "card"  = 4:3 for the narrow campaign cards                     */
+const ART_TILES = { strip: 3, hero: 2, card: 1 };
+function stageArt(sceneKey, titanId, color, mode){
   if (!S.settings.art) return "";
   const id = "a" + (++artSeq);
-  return '<div class="stage-art ' + (cls || "short") + '">' +
-    '<svg viewBox="0 0 240 180" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Scene illustration">' +
-    sceneSVG(sceneKey, id) +
-    (titanId ? titanSVG(titanId, color, { scale: 0.82, dx: 22, dy: 24 }) : "") +
+  const tiles = ART_TILES[mode] || ART_TILES.hero;
+  const W = 240 * tiles, sc = 0.85;
+  return '<div class="stage-art ' + (mode || "hero") + '">' +
+    '<svg viewBox="0 0 ' + W + ' 180" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Scene illustration">' +
+    sceneSVG(sceneKey, id, tiles) +
+    (titanId ? titanSVG(titanId, color, { scale: sc, dx: (W - 240 * sc) / 2, dy: 22 }) : "") +
     '</svg></div>';
 }
 
@@ -1241,7 +1262,7 @@ function screenMap(){
     const p = campaignProgress(ci);
     const hero = TITANS[c.hero];
     return '<button class="camp" data-ci="' + ci + '">' +
-      stageArt(CONTENT[ci].stages[0].scene, hero.rig, hero.color, "short") +
+      stageArt(CONTENT[ci].stages[0].scene, hero.rig, hero.color, "card") +
       '<div class="capsule">' +
         '<div class="cname">' + esc(c.name) + '</div>' +
         '<div class="cdesc">' + esc(c.blurb) + '</div>' +
@@ -1293,7 +1314,7 @@ function screenCampaign(ci){
   }).join("");
   const hero = TITANS[c.hero];
   show('<div class="screen">' +
-    stageArt(c.stages[0].scene, hero.rig, hero.color, "") +
+    stageArt(c.stages[0].scene, hero.rig, hero.color, "hero") +
     '<div><span class="eyebrow">Storyline ' + (ci + 1) + ' of ' + CONTENT.length + '</span>' +
     '<h2 class="title">' + esc(c.name) + '</h2></div>' +
     '<p class="lede">' + esc(c.blurb) + '</p>' +
@@ -1396,7 +1417,7 @@ function startLevel(ci, si, li){
   MUSIC.play("explore");
 
   show('<div class="screen stagewrap">' +
-    stageArt(st.scene, hero.rig, hero.color, "short") +
+    stageArt(st.scene, hero.rig, hero.color, "strip") +
     '<div><span class="eyebrow">' + esc(c.name) + ' · Stage ' + (si + 1) + '</span>' +
     '<h2 class="title">' + esc(st.name) + ' — ' + esc(lv.name) + '</h2></div>' +
     (li === 0 ? '<div class="callout atomic"><span class="speaker">Monarch Briefing</span>' + esc(st.brief) + "</div>" : "") +
@@ -1446,7 +1467,7 @@ function storyScreen(ci, si, li, acc){
   if (sessionOver) sessionOffered = true;
 
   show('<div class="screen storywrap">' +
-    stageArt(st.scene, art.rig, art.color, "") +
+    stageArt(st.scene, art.rig, art.color, "hero") +
     '<div class="chapline"><span class="chapno">Chapter ' + chap + '</span>' +
       '<span class="eyebrow">' + esc(c.name) + '</span></div>' +
     '<h2 class="title">' + esc(title) + '</h2>' +
@@ -1498,13 +1519,13 @@ function startBoss(ci, si){
 
   const arena = S.settings.art
     ? '<div class="arena-art" id="arena">' +
-      '<svg viewBox="0 0 240 180" preserveAspectRatio="xMidYMax slice">' +
-        sceneSVG(st.scene, gid) +
-        '<g id="heroG">' + titanSVG(hero.rig, hero.color, { scale: 0.62, dx: -4, dy: 62 }) + "</g>" +
-        '<g id="foeG">' + titanSVG(t.rig, t.color, { flip: true, scale: 0.62, dx: 86, dy: 62 }) + "</g>" +
-        '<rect class="beam" id="beam" x="96" y="96" width="70" height="5" rx="2.5" fill="' + hero.color + '"/>' +
-        '<rect class="bigbeam" id="bigbeam" x="92" y="88" width="88" height="14" rx="7" fill="#ffffff" opacity="0"/>' +
-        '<circle class="impact" id="impact" cx="176" cy="98" r="4" fill="none" stroke="' + t.color + '" stroke-width="2"/>' +
+      '<svg viewBox="0 0 480 180" preserveAspectRatio="xMidYMid meet">' +
+        sceneSVG(st.scene, gid, 2) +
+        '<g id="heroG">' + titanSVG(hero.rig, hero.color, { scale: 0.66, dx: 8, dy: 56 }) + "</g>" +
+        '<g id="foeG">' + titanSVG(t.rig, t.color, { flip: true, flipW: 480, scale: 0.66, dx: 8, dy: 56 }) + "</g>" +
+        '<rect class="beam" id="beam" x="166" y="96" width="150" height="5" rx="2.5" fill="' + hero.color + '"/>' +
+        '<rect class="bigbeam" id="bigbeam" x="162" y="88" width="162" height="14" rx="7" fill="#ffffff" opacity="0"/>' +
+        '<circle class="impact" id="impact" cx="322" cy="98" r="4" fill="none" stroke="' + t.color + '" stroke-width="2"/>' +
       "</svg>" +
       '<div class="movebanner"><b id="moveName"></b></div>' +
       "<div class='flashlayer' id='flash'></div></div>"
@@ -1627,7 +1648,7 @@ function regroup(ci, si){
   const st = CONTENT[ci].stages[si], t = TITANS[st.boss];
   MUSIC.play("story");
   show('<div class="screen">' +
-    stageArt(st.scene, t.rig, t.color, "short") +
+    stageArt(st.scene, t.rig, t.color, "strip") +
     '<div><span class="eyebrow">Regroup</span><h2 class="title">Pull back and go again</h2></div>' +
     '<div class="callout"><span class="speaker">Monarch</span>Shields are down, so we are pulling you out. Nothing is lost — ' + esc(t.name) +
     " is exactly where you left it, and so is every chapter and every level you have already cleared. Most of Monarch needed three tries at this one.</div>" +
@@ -1691,8 +1712,8 @@ function screenCards(){
   const cards = ids.map(id => {
     const t = TITANS[id], got = !!S.cards[id] || starters.indexOf(id) >= 0;
     return '<div class="dossier' + (got ? "" : " sealed") + '">' +
-      (S.settings.art ? '<div class="stage-art short" style="border:0;border-bottom:1px solid var(--edge);border-radius:0">' +
-        '<svg viewBox="0 0 240 180" preserveAspectRatio="xMidYMax slice">' + sceneSVG(t.scene, "d" + id) +
+      (S.settings.art ? '<div class="stage-art card" style="border:0;border-bottom:1px solid var(--edge);border-radius:0">' +
+        '<svg viewBox="0 0 240 180" preserveAspectRatio="xMidYMid meet">' + sceneSVG(t.scene, "d" + id) +
         titanSVG(t.rig, got ? t.color : "#3a4652", { scale: 0.8, dx: 24, dy: 26 }) + "</svg></div>" : "") +
       '<div class="dbody"><div class="dname">' + (got ? esc(t.name) : "Classified") + "</div>" +
       '<div class="drow">' + (got ? esc(t.desig) + " · " + esc(t.role) : "Dossier sealed") + "</div>" +
