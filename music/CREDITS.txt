@@ -1,0 +1,31 @@
+MUSIC CREDITS — Titan Protocol
+==============================
+
+All four tracks are by Scott Buckley (www.scottbuckley.com.au) and are used
+under the Creative Commons Attribution 4.0 International licence (CC BY 4.0).
+https://creativecommons.org/licenses/by/4.0/
+
+Free to use, including commercially, as long as Scott Buckley is credited.
+
+  explore.mp3   "Descent"              — Scott Buckley
+  battle.mp3    "Song of the Forge"    — Scott Buckley
+  story.mp3     "Dragon's Lullaby"     — Scott Buckley
+  victory.mp3   "Simulacra"            — Scott Buckley
+
+Original filenames as downloaded: descent.mp3, SongOfTheForge.mp3,
+DragonsLullaby2023.mp3, Simulacra.mp3.
+
+To swap which track plays where, just rename the files. The game looks for
+exactly these four names in this folder:
+
+  explore.mp3   plays on the map, the storyline pages and during exercises
+  battle.mp3    plays during boss fights
+  story.mp3     plays on the story chapter screens
+  victory.mp3   plays on the chapter you get after beating a titan
+
+If a file is missing or cannot be decoded, the game falls back to its own
+generated score automatically. Nothing breaks.
+
+NOTE: these MP3s only play when game.html is opened from this computer.
+The published web version blocks audio loaded from outside the page, so it
+always uses the generated score.

@@ -1,0 +1,1939 @@
+<title>Titan Protocol</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+* { box-sizing: border-box; }
+
+:root {
+  --void:      #0c1014;
+  --deck:      #141b21;
+  --deck-2:    #1c252d;
+  --edge:      #2a3742;
+  --edge-hi:   #3d4f5c;
+  --ink:       #e6eef4;
+  --ink-soft:  #9fb2c0;
+  --ink-faint: #6b8090;
+  --amber:     #e5a63c;
+  --atomic:    #56c8de;
+  --good:      #74c98a;
+  --ember:     #e07a5f;
+  --violet:    #9b8ad4;
+  --sil:       #080c10;
+
+  --f-lp: #4f8fd6; --f-lr: #59b0c9; --f-lm: #63c4a5; --f-li: #7cc46e;
+  --f-ri: #d9b45c; --f-rm: #dd9a63; --f-rr: #d97f7f; --f-rp: #b98ad0;
+  --f-th: #7d8fa0;
+
+  --gap: 1rem;
+  --radius: 6px;
+  --type-size: 1.9rem;
+}
+:root[data-contrast="high"] {
+  --void: #000; --deck: #0a0a0a; --deck-2: #141414;
+  --edge: #666; --edge-hi: #999;
+  --ink: #fff; --ink-soft: #ddd; --ink-faint: #bbb;
+  --amber: #ffcf5c; --atomic: #7fe3f5; --good: #8ff0a6; --ember: #ff9c7d; --violet: #c4b4ff;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--void); color: var(--ink);
+  font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+  font-size: 16px; line-height: 1.55; margin: 0; min-height: 100vh;
+}
+:root[data-motion="off"] * { animation: none !important; transition: none !important; }
+
+h1, h2, h3, .stencil { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; letter-spacing: 0.02em; }
+.mono, .readout { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+
+button {
+  font-family: "Barlow Condensed", sans-serif; font-size: 1rem; letter-spacing: 0.06em;
+  text-transform: uppercase; font-weight: 600; color: var(--ink);
+  background: var(--deck-2); border: 1px solid var(--edge-hi); border-radius: var(--radius);
+  padding: 0.55rem 1.1rem; cursor: pointer; transition: background 120ms ease;
+}
+button:hover { background: var(--edge); }
+button:focus-visible { outline: 2px solid var(--atomic); outline-offset: 2px; }
+button.primary { background: var(--amber); color: #17140c; border-color: var(--amber); }
+button.primary:hover { background: #f2b556; }
+button.ghost { background: transparent; }
+button[disabled] { opacity: 0.35; cursor: not-allowed; }
+
+#app { max-width: 62rem; margin: 0 auto; padding: 0 1rem 4rem; }
+.topbar { display: flex; align-items: center; gap: 0.85rem; padding: 0.9rem 0; border-bottom: 1px solid var(--edge); flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 0.6rem; margin-right: auto; }
+.brand .mark { width: 26px; height: 26px; border: 2px solid var(--amber); border-radius: 50%; display: grid; place-items: center; flex: none; }
+.brand .mark i { display: block; width: 8px; height: 8px; background: var(--amber); border-radius: 50%; animation: pulse 2.6s ease-in-out infinite; }
+.brand b { font-family: "Barlow Condensed", sans-serif; font-size: 1.15rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
+.brand small { display: block; font-family: "IBM Plex Mono", monospace; font-size: 0.6rem; letter-spacing: 0.2em; color: var(--ink-faint); text-transform: uppercase; }
+.topbar button { padding: 0.35rem 0.7rem; font-size: 0.82rem; }
+
+.screen { padding-top: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+.eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 0.66rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-faint); }
+h2.title { font-size: 2rem; font-weight: 700; margin: 0.25rem 0 0; text-transform: uppercase; letter-spacing: 0.03em; }
+h3.sub { font-size: 1.25rem; margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
+p.lede { margin: 0; color: var(--ink-soft); max-width: 44rem; }
+.panel { background: var(--deck); border: 1px solid var(--edge); border-radius: var(--radius); padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: 0.8rem; }
+
+/* ============ SCENE ART ============ */
+.stage-art { position: relative; border: 1px solid var(--edge); border-radius: var(--radius); overflow: hidden; background: #05080b; }
+.stage-art svg { display: block; width: 100%; height: auto; }
+.stage-art.short svg { max-height: 190px; }
+.sil { fill: var(--sil); stroke: currentColor; stroke-width: 1.6; stroke-opacity: 0.6; stroke-linejoin: round; }
+.sil.solid { stroke-opacity: 0.28; }
+.glowdot { fill: currentColor; filter: drop-shadow(0 0 3px currentColor); }
+.bgfar { opacity: 0.5; }
+.bgnear { opacity: 0.9; }
+
+@keyframes breathe { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-1.6px) scale(1.012); } }
+@keyframes sway    { 0%,100% { transform: rotate(-2.4deg); } 50% { transform: rotate(2.4deg); } }
+@keyframes flap    { 0%,100% { transform: rotate(-9deg) scaleY(0.94); } 50% { transform: rotate(11deg) scaleY(1.06); } }
+@keyframes bob     { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes pulse   { 0%,100% { opacity: 0.45; } 50% { opacity: 1; } }
+@keyframes drift   { from { transform: translateY(-30px); } to { transform: translateY(210px); } }
+@keyframes cloudrun{ from { transform: translateX(-40px); } to { transform: translateX(280px); } }
+
+.g-body { animation: breathe 4.2s ease-in-out infinite; transform-origin: 50% 90%; }
+.g-tail { animation: sway 5.4s ease-in-out infinite; transform-origin: 78% 62%; }
+.g-wing { animation: flap 2.4s ease-in-out infinite; transform-origin: 62% 55%; }
+.g-wing2{ animation: flap 2.4s ease-in-out infinite reverse; transform-origin: 44% 55%; }
+.g-head { animation: bob 3.6s ease-in-out infinite; transform-origin: 60% 60%; }
+.g-arm  { animation: sway 4.8s ease-in-out infinite; transform-origin: 40% 40%; }
+.g-glow { animation: pulse 2.2s ease-in-out infinite; }
+.particle { animation: drift linear infinite; }
+.cloud { animation: cloudrun linear infinite; opacity: 0.16; }
+
+/* ============ BATTLE FX ============ */
+@keyframes lungeR { 0% { transform: translateX(0); } 35% { transform: translateX(26px) scale(1.05); } 100% { transform: translateX(0); } }
+@keyframes lungeL { 0% { transform: translateX(0); } 35% { transform: translateX(-26px) scale(1.05); } 100% { transform: translateX(0); } }
+@keyframes recoilL{ 0% { transform: translateX(0); } 25% { transform: translateX(-14px) rotate(-3deg); } 100% { transform: translateX(0); } }
+@keyframes recoilR{ 0% { transform: translateX(0); } 25% { transform: translateX(14px) rotate(3deg); } 100% { transform: translateX(0); } }
+@keyframes beamGo { 0% { transform: scaleX(0); opacity: 0; } 15% { opacity: 1; } 70% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
+@keyframes shake  { 0%,100% { transform: translate(0,0); } 20% { transform: translate(-5px,3px); } 40% { transform: translate(5px,-3px); } 60% { transform: translate(-4px,-2px); } 80% { transform: translate(4px,2px); } }
+@keyframes flashUp{ 0% { opacity: 0; } 25% { opacity: 0.55; } 100% { opacity: 0; } }
+@keyframes ringOut{ 0% { r: 4; opacity: 0.9; } 100% { r: 46; opacity: 0; } }
+
+.fx-lunge-r { animation: lungeR 420ms ease-out; }
+.fx-lunge-l { animation: lungeL 420ms ease-out; }
+.fx-recoil-l { animation: recoilL 380ms ease-out; }
+.fx-recoil-r { animation: recoilR 380ms ease-out; }
+.beam { transform-origin: left center; opacity: 0; }
+.beam.fire { animation: beamGo 520ms ease-out; }
+.arena-art.shaking { animation: shake 420ms ease-in-out; }
+.flashlayer { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.flashlayer.go { animation: flashUp 380ms ease-out; }
+.impact { opacity: 0; }
+.impact.go { animation: ringOut 520ms ease-out; }
+
+/* ============ CAMPAIGN CARDS ============ */
+.campaigns { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: var(--gap); }
+.camp {
+  background: var(--deck); border: 1px solid var(--edge); border-radius: var(--radius);
+  padding: 0; text-align: left; display: flex; flex-direction: column;
+  text-transform: none; letter-spacing: normal; font-family: "Atkinson Hyperlegible", sans-serif;
+  font-weight: 400; overflow: hidden;
+}
+.camp:hover { background: var(--deck-2); border-color: var(--edge-hi); }
+.camp .capsule { padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.camp .cname { font-family: "Barlow Condensed", sans-serif; font-size: 1.35rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.1; }
+.camp .cdesc { color: var(--ink-soft); font-size: 0.9rem; }
+.camp .cmeta { font-family: "IBM Plex Mono", monospace; font-size: 0.68rem; letter-spacing: 0.1em; color: var(--ink-faint); text-transform: uppercase; }
+.bar { height: 4px; background: var(--edge); border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--amber); border-radius: 2px; transition: width 400ms ease; }
+
+/* ============ STAGE LIST ============ */
+.stages { display: flex; flex-direction: column; gap: 0.65rem; }
+.stage { background: var(--deck); border: 1px solid var(--edge); border-radius: var(--radius); padding: 0.85rem 1rem; display: grid; gap: 0.6rem; grid-template-columns: 2.4rem 1fr; align-items: start; }
+.stage .num { font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; color: var(--ink-faint); border: 1px solid var(--edge); border-radius: 4px; text-align: center; padding: 0.2rem 0; }
+.stage.done .num { color: var(--good); border-color: var(--good); }
+.stage .sname { font-family: "Barlow Condensed", sans-serif; font-size: 1.12rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.stage .skeys { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; color: var(--ink-faint); letter-spacing: 0.06em; }
+.nodes { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.node { font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: none; padding: 0.4rem 0.7rem; border-radius: 4px; background: var(--deck-2); border: 1px solid var(--edge); color: var(--ink-soft); display: flex; align-items: center; gap: 0.4rem; }
+.node:hover { background: var(--edge); }
+.node.boss { border-color: var(--ember); color: var(--ember); font-weight: 600; }
+.node.cleared { border-color: var(--good); color: var(--good); }
+.node.cleared::before { content: "✓"; }
+.node.locked { opacity: 0.3; cursor: not-allowed; }
+.node.locked:hover { background: var(--deck-2); }
+
+/* ============ TYPING ============ */
+.stagewrap { display: flex; flex-direction: column; gap: 1rem; }
+.hud { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.hud .readout { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
+.hud .spacer { margin-left: auto; }
+.progdots { display: flex; gap: 4px; flex-wrap: wrap; }
+.progdots i { width: 12px; height: 6px; border-radius: 2px; background: var(--edge); display: block; transition: background 200ms ease; }
+.progdots i.on { background: var(--good); }
+.progdots i.now { background: var(--amber); }
+
+.typebox { background: var(--deck); border: 1px solid var(--edge); border-radius: var(--radius); padding: 1.6rem 1.5rem; min-height: 8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.9rem; text-align: center; }
+.prompt { font-size: var(--type-size); font-weight: 700; line-height: 1.45; letter-spacing: 0.04em; word-break: break-word; max-width: 46rem; }
+.prompt .ch { border-bottom: 2px solid transparent; padding-bottom: 1px; }
+.prompt .ch.done { color: var(--good); }
+.prompt .ch.now { border-bottom-color: var(--amber); background: rgba(229,166,60,0.16); border-radius: 2px; }
+.prompt .ch.now.bad { background: rgba(224,122,95,0.3); border-bottom-color: var(--ember); }
+.hint { font-size: 0.85rem; color: var(--ink-faint); margin: 0; }
+.hiddeninput { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+
+#kbdSlot { max-width: 100%; overflow-x: auto; padding-bottom: 4px; }
+.kbd { display: flex; flex-direction: column; gap: 5px; align-items: center; width: max-content; margin: 0 auto; min-width: 100%; }
+.krow { display: flex; gap: 5px; flex-wrap: nowrap; }
+.key { width: clamp(1.5rem, 3.6vw, 2.2rem); height: clamp(1.5rem, 3.6vw, 2.2rem); border-radius: 5px; background: var(--deck-2); border: 1px solid var(--edge); border-bottom-width: 3px; display: grid; place-items: center; font-family: "IBM Plex Mono", monospace; font-size: clamp(0.58rem, 1.5vw, 0.78rem); color: var(--ink-soft); flex: none; transition: background 90ms ease; }
+.key.wide { width: clamp(3rem, 7vw, 4.2rem); }
+.key.space { width: clamp(6rem, 16vw, 11rem); }
+.key.target { background: var(--amber); color: #17140c; border-color: var(--amber); font-weight: 600; }
+.key.target.bad { background: var(--ember); border-color: var(--ember); }
+.key[data-f="lp"] { border-bottom-color: var(--f-lp); } .key[data-f="lr"] { border-bottom-color: var(--f-lr); }
+.key[data-f="lm"] { border-bottom-color: var(--f-lm); } .key[data-f="li"] { border-bottom-color: var(--f-li); }
+.key[data-f="ri"] { border-bottom-color: var(--f-ri); } .key[data-f="rm"] { border-bottom-color: var(--f-rm); }
+.key[data-f="rr"] { border-bottom-color: var(--f-rr); } .key[data-f="rp"] { border-bottom-color: var(--f-rp); }
+.key[data-f="th"] { border-bottom-color: var(--f-th); }
+.fingerhint { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
+
+/* ============ BATTLE ============ */
+.arena-art { position: relative; border: 1px solid var(--edge); border-radius: var(--radius); overflow: hidden; background: #05080b; }
+.arena-art svg { display: block; width: 100%; height: auto; }
+.combat { display: grid; grid-template-columns: 1fr; gap: 0.6rem; }
+@media (min-width: 44rem) { .combat { grid-template-columns: 1fr 1fr; } }
+.gauge { background: var(--deck); border: 1px solid var(--edge); border-radius: var(--radius); padding: 0.7rem 0.9rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.gauge .gname { font-family: "Barlow Condensed", sans-serif; font-size: 1.05rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; line-height: 1; }
+.gauge .gsub { font-family: "IBM Plex Mono", monospace; font-size: 0.62rem; letter-spacing: 0.13em; color: var(--ink-faint); text-transform: uppercase; }
+.hpbar { height: 10px; background: var(--edge); border-radius: 5px; overflow: hidden; }
+.hpbar i { display: block; height: 100%; width: 100%; background: var(--ember); transition: width 300ms ease; }
+.charge { height: 5px; background: var(--edge); border-radius: 3px; overflow: hidden; }
+.charge i { display: block; height: 100%; width: 0; background: var(--amber); transition: width 160ms ease; }
+.shields { display: flex; gap: 5px; }
+.shields i { width: 16px; height: 16px; border: 2px solid var(--atomic); border-radius: 3px; display: block; transition: opacity 200ms ease; }
+.shields i.gone { border-color: var(--edge); opacity: 0.35; }
+
+/* ============ STORY ============ */
+.storywrap { display: flex; flex-direction: column; gap: 1.1rem; }
+.chapline { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; }
+.chapno { font-family: "IBM Plex Mono", monospace; font-size: 0.68rem; letter-spacing: 0.2em; color: var(--amber); text-transform: uppercase; }
+.storytext { font-size: 1.14rem; line-height: 1.75; max-width: 40rem; margin: 0; }
+.storytext + .storytext { margin-top: 0.9rem; }
+.dropcap::first-letter { font-family: "Barlow Condensed", sans-serif; font-size: 3.1rem; line-height: 0.82; float: left; padding: 0.1rem 0.5rem 0 0; color: var(--amber); font-weight: 700; }
+.callout { border-left: 3px solid var(--amber); background: var(--deck); border-radius: 0 var(--radius) var(--radius) 0; padding: 0.8rem 1rem; color: var(--ink-soft); font-size: 0.95rem; }
+.callout.ember { border-left-color: var(--ember); }
+.callout.atomic { border-left-color: var(--atomic); }
+.speaker { font-family: "IBM Plex Mono", monospace; font-size: 0.65rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: 0.25rem; }
+
+/* ============ DOSSIERS ============ */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--gap); }
+.dossier { background: var(--deck); border: 1px solid var(--edge); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+.dossier .dbody { padding: 0.9rem 1rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.dossier.sealed { opacity: 0.45; }
+.dossier .dname { font-family: "Barlow Condensed", sans-serif; font-size: 1.15rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.05; }
+.dossier .drow { font-family: "IBM Plex Mono", monospace; font-size: 0.63rem; letter-spacing: 0.09em; color: var(--ink-faint); text-transform: uppercase; }
+.dossier .dnote { font-size: 0.86rem; color: var(--ink-soft); }
+
+/* ============ SETTINGS ============ */
+.setgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.4rem 1.5rem; }
+.setrow { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.45rem 0; border-bottom: 1px solid var(--edge); }
+.toggle { border-radius: 20px; padding: 0.25rem 0.85rem; font-size: 0.72rem; min-width: 4.5rem; }
+.toggle[aria-pressed="true"] { background: rgba(86,200,222,0.16); border-color: var(--atomic); color: var(--atomic); }
+table.stats { width: 100%; border-collapse: collapse; font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; }
+table.stats th, table.stats td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--edge); }
+table.stats th { font-size: 0.63rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500; }
+table.stats td { font-variant-numeric: tabular-nums; }
+.scroller { overflow-x: auto; }
+.row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.bigstat { display: flex; flex-direction: column; gap: 0.1rem; }
+.bigstat b { font-family: "Barlow Condensed", sans-serif; font-size: 2.3rem; line-height: 1; color: var(--amber); font-variant-numeric: tabular-nums; }
+.bigstat span { font-family: "IBM Plex Mono", monospace; font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
+
+/* ============ MOVES + FINISHER ============ */
+.movebanner { position: absolute; left: 0; right: 0; top: 6%; text-align: center; pointer-events: none; }
+.movebanner b {
+  display: inline-block; font-family: "Barlow Condensed", sans-serif; font-size: clamp(1.1rem, 3.4vw, 1.7rem);
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber);
+  text-shadow: 0 2px 12px #000, 0 0 4px #000; opacity: 0;
+}
+.movebanner b.go { animation: moveIn 950ms ease-out; }
+.movebanner b.fin { color: #fff; font-size: clamp(1.5rem, 5vw, 2.6rem); text-shadow: 0 0 18px var(--atomic), 0 2px 12px #000; }
+@keyframes moveIn { 0% { opacity: 0; transform: translateY(12px) scale(0.9); } 18% { opacity: 1; transform: translateY(0) scale(1); } 72% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes bigbeam { 0% { transform: scaleX(0) scaleY(0.3); opacity: 0; } 10% { opacity: 1; } 55% { transform: scaleX(1) scaleY(1.7); opacity: 1; } 100% { transform: scaleX(1) scaleY(2.3); opacity: 0; } }
+.bigbeam { transform-origin: left center; opacity: 0; }
+.bigbeam.fire { animation: bigbeam 1150ms ease-out; }
+.chargebar { height: 7px; background: var(--edge); border-radius: 4px; overflow: hidden; }
+.chargebar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--atomic), #ffffff); transition: width 260ms ease; }
+.chargebar.full { box-shadow: 0 0 10px var(--atomic); }
+.chargebar.full i { animation: pulse 800ms ease-in-out infinite; }
+.readybadge { color: var(--atomic); font-weight: 700; letter-spacing: 0.14em; }
+
+/* ============ TUTORIAL ============ */
+.tut-veil { position: fixed; inset: 0; background: rgba(4,7,10,0.82); z-index: 60; }
+.tut-hole { position: fixed; border: 2px solid var(--amber); border-radius: 8px; box-shadow: 0 0 0 9999px rgba(4,7,10,0.82), 0 0 22px rgba(229,166,60,0.7); z-index: 61; pointer-events: none; transition: all 260ms ease; }
+.tut-box { position: fixed; z-index: 62; max-width: 22rem; background: var(--deck); border: 1px solid var(--edge-hi); border-radius: var(--radius); padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.7rem; box-shadow: 0 14px 40px rgba(0,0,0,0.6); }
+.tut-box h4 { font-family: "Barlow Condensed", sans-serif; font-size: 1.2rem; margin: 0; text-transform: uppercase; letter-spacing: 0.06em; }
+.tut-box p { margin: 0; font-size: 0.94rem; color: var(--ink-soft); }
+.tut-box .tut-nav { display: flex; gap: 0.5rem; align-items: center; }
+.tut-step { font-family: "IBM Plex Mono", monospace; font-size: 0.66rem; letter-spacing: 0.14em; color: var(--ink-faint); margin-right: auto; }
+.tut-cta { border: 1px dashed var(--amber); border-radius: var(--radius); padding: 0.9rem 1rem; display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap; }
+.tut-cta p { margin: 0; color: var(--ink-soft); font-size: 0.94rem; flex: 1; min-width: 12rem; }
+
+.sitefoot { border-top: 1px solid var(--edge); padding-top: 1rem; margin-top: 0.5rem; font-size: 0.78rem; color: var(--ink-faint); line-height: 1.6; }
+.sitefoot a { color: var(--ink-soft); }
+</style>
+
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark"><i></i></div>
+      <div><b>Titan Protocol</b><small>Monarch Keyboard Division</small></div>
+    </div>
+    <button id="btnStory" class="ghost">Story so far</button>
+    <button id="btnCards" class="ghost">Dossiers</button>
+    <button id="btnSettings" class="ghost">Settings</button>
+    <button id="btnMap" class="ghost">Map</button>
+  </div>
+  <div id="screens"></div>
+</div>
+<input class="hiddeninput" id="capture" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-hidden="true" tabindex="-1">
+
+<script>
+/* =========================================================================
+   TITAN PROTOCOL
+   A typing adventure. Three storylines, thirteen stages, animated titans,
+   and a story chapter after every single exercise.
+
+   Design rules baked in (see research/typing-brief.html):
+     - no clocks or countdowns anywhere; the titan only acts when you miss
+     - accuracy is the only score shown to the player
+     - real words only, key-constrained to what has been taught
+     - backspace disabled: errorless forward correction
+     - weakest keys are silently over-sampled
+   Visual richness was an explicit parent decision; every channel (motion,
+   sound, speech, art) is still switchable in Settings.
+   ========================================================================= */
+
+/* ---------------- keyboard + fingers ---------------- */
+const FINGER = {};
+const FINGER_NAME = { lp:"left pinky", lr:"left ring", lm:"left middle", li:"left index",
+                      ri:"right index", rm:"right middle", rr:"right ring", rp:"right pinky", th:"thumb" };
+(function(){
+  const map = { lp:"1qaz`", lr:"2wsx", lm:"3edc", li:"45rfvtgb", ri:"67yhnujm",
+                rm:"8ik,", rr:"9ol.", rp:"0p;/-='[]\\", th:" " };
+  for (const f in map) for (const c of map[f]) FINGER[c] = f;
+})();
+const SHIFTED = { "!":"1","@":"2","#":"3","$":"4","%":"5","^":"6","&":"7","*":"8","(":"9",")":"0",
+                  "_":"-","+":"=","{":"[","}":"]","|":"\\",":":";","\"":"'","<":",",">":".","?":"/","~":"`" };
+function baseKey(ch){ if (ch === undefined || ch === null) return null; return SHIFTED[ch] || ch.toLowerCase(); }
+function needsShift(ch){ return (ch >= "A" && ch <= "Z") || !!SHIFTED[ch]; }
+const KEYROWS = [
+  ["1","2","3","4","5","6","7","8","9","0","-"],
+  ["q","w","e","r","t","y","u","i","o","p"],
+  ["a","s","d","f","g","h","j","k","l",";","'"],
+  ["z","x","c","v","b","n","m",",",".","/"],
+  [" "]
+];
+
+/* =========================================================================
+   ART — every titan is a rigged silhouette. Parts are grouped so they can
+   breathe, sway and flap independently. Nothing is loaded from outside.
+   Drawn facing right in a 240x180 box; enemies are mirrored at render time.
+   ========================================================================= */
+const RIG = {
+  godzilla: { parts: [
+      ["tail","80,108 58,118 32,128 6,140 30,134 56,128 78,124"],
+      ["body","176,44 158,34 142,38 128,50 114,58 100,62 88,70 80,86 76,104 80,140 78,154 98,154 96,138 106,128 112,140 110,154 130,154 128,134 126,112 124,92 130,74 140,62 152,54 166,50"],
+      ["extra","112,58 118,40 124,58"],["extra","98,62 104,44 110,62"],["extra","86,70 92,52 98,70"],
+      ["extra","76,86 82,66 88,86"],["extra","72,102 78,84 84,102"],["extra","60,118 66,104 72,118"],
+      ["arm","128,80 142,88 148,100 138,98 126,90"]],
+    dots: [[160,44,3.2]], beam: [180,48] },
+
+  kong: { parts: [
+      ["arm","70,54 56,74 46,104 48,132 64,132 62,106 72,86"],
+      ["arm","152,56 168,78 176,106 172,134 156,134 158,106 148,86"],
+      ["body","104,28 124,32 140,44 148,62 150,88 144,112 140,136 138,152 116,152 114,130 106,126 100,152 80,152 82,132 78,110 72,86 74,60 84,40"],
+      ["head","106,34 128,38 138,52 136,68 122,76 104,74 92,64 92,46"]],
+    dots: [[108,54,3],[126,54,3]], beam: [166,72] },
+
+  ghidorah: { parts: [
+      ["wing2","96,102 58,64 24,50 16,74 46,100 76,114"],
+      ["wing","134,102 172,66 206,54 212,80 182,104 150,118"],
+      ["tail","102,136 84,152 60,166 86,152 104,144"],
+      ["body","96,102 120,96 136,110 132,136 110,146 90,134 86,116"],
+      ["head","106,104 96,100 72,70 50,42 60,32 84,62 110,94"],
+      ["extra","46,24 66,30 70,42 52,48 38,38"],
+      ["head","118,102 106,100 100,62 100,26 112,24 116,60"],
+      ["extra","98,16 118,20 122,32 104,40 92,30"],
+      ["head","126,104 136,98 160,68 180,40 190,50 166,80 138,108"],
+      ["extra","186,32 206,40 206,54 188,58 178,44"]],
+    dots: [[54,36,2.6],[106,28,2.6],[194,44,2.6]], beam: [206,48] },
+
+  rodan: { parts: [
+      ["wing2","104,98 68,58 30,42 20,64 52,90 86,110"],
+      ["wing","128,100 160,64 198,46 208,70 174,96 142,112"],
+      ["body","104,94 128,90 140,102 134,124 110,130 96,116"],
+      ["head","136,86 164,80 176,92 158,102 136,100"],
+      ["extra","108,128 102,148 92,156 112,152 118,132"],
+      ["extra","124,128 132,148 142,156 122,152 116,132"]],
+    dots: [[156,88,2.8]], beam: [180,90] },
+
+  mothra: { parts: [
+      ["wing2","112,74 76,38 38,32 34,66 66,94 108,102"],
+      ["wing","128,74 164,38 202,32 206,66 174,94 132,102"],
+      ["wing2","112,104 80,114 58,138 88,148 110,126"],
+      ["wing","128,104 160,114 182,138 152,148 130,126"],
+      ["body","114,64 126,64 132,96 130,132 120,144 110,132 108,96"],
+      ["head","112,52 128,52 132,64 110,64"]],
+    dots: [[114,58,2.4],[126,58,2.4]], beam: [140,70] },
+
+  scylla: { parts: [
+      ["arm","104,104 76,74 52,50 60,44 88,70 110,98"],
+      ["arm","106,112 70,104 36,100 38,110 74,116 108,120"],
+      ["arm","110,124 84,146 58,166 68,170 96,150 116,132"],
+      ["arm","136,102 164,72 188,48 196,54 168,80 142,106"],
+      ["arm","140,112 176,104 210,100 208,110 172,116 138,120"],
+      ["arm","136,124 162,146 188,166 178,170 150,150 132,132"],
+      ["body","100,100 132,92 152,106 148,130 118,140 98,126 92,112"]],
+    dots: [[130,106,2.6],[142,112,2.6]], beam: [156,110] },
+
+  behemoth: { parts: [
+      ["tail","72,100 50,108 34,124 54,116 72,112"],
+      ["body","74,92 104,74 140,72 164,86 172,110 166,140 142,152 96,152 76,140 68,116"],
+      ["head","162,84 190,80 200,98 192,122 168,126 158,108"],
+      ["extra","186,112 210,126 218,142 188,126"],
+      ["extra","178,118 198,138 202,154 176,132"],
+      ["arm","172,120 180,142 174,160 164,142 162,124"]],
+    dots: [[176,96,2.8]], beam: [206,132] },
+
+  methuselah: { parts: [
+      ["body","18,150 62,72 92,110 122,44 158,104 186,70 222,150"],
+      ["extra","64,150 68,168 84,168 82,150"],
+      ["extra","150,150 154,170 172,170 168,150"],
+      ["extra","104,146 108,164 122,164 120,146"]],
+    dots: [[112,86,3],[132,90,3]], beam: [150,90] },
+
+  crawler: { parts: [
+      ["tail","112,112 84,124 50,138 18,152 52,144 86,134 110,124"],
+      ["body","118,98 152,90 176,98 186,112 162,122 128,122 108,116"],
+      ["head","172,92 204,84 214,100 200,114 174,112"],
+      ["extra","178,104 208,110 202,120 178,114"],
+      ["arm","132,116 124,140 110,152 128,146 140,124"],
+      ["arm","150,118 148,142 138,156 154,148 160,126"]],
+    dots: [[190,96,2.8]], beam: [214,100] },
+
+  warbat: { parts: [
+      ["wing","112,58 98,22 130,10 150,32 140,58"],
+      ["body","38,112 44,76 76,50 120,46 156,66 172,98 158,130 126,148 90,146 66,128 76,110 100,122 128,120 142,104 134,84 108,72 80,80 60,100 56,118"],
+      ["head","150,54 180,42 194,56 176,70 150,68"]],
+    dots: [[172,52,2.6]], beam: [196,56] },
+
+  tiamat: { parts: [
+      ["tail","6,148 36,118 66,140 96,110 126,132 156,102 186,124 192,138 156,116 126,146 96,124 66,154 36,132 10,158"],
+      ["body","150,104 178,96 196,104 194,120 168,126 148,120"],
+      ["head","188,94 218,86 228,102 210,118 188,116"],
+      ["extra","118,112 132,84 150,104"],
+      ["extra","62,140 74,114 92,132"]],
+    dots: [[210,98,2.8]], beam: [230,100] },
+
+  skarking: { parts: [
+      ["arm","70,58 54,78 44,108 46,136 62,136 60,110 72,90"],
+      ["arm","152,60 172,80 186,104 196,132 180,140 166,110 148,90"],
+      ["body","104,34 124,38 140,50 148,68 150,94 144,116 140,138 138,154 116,154 114,132 106,128 100,154 80,154 82,134 78,112 72,90 74,64 84,46"],
+      ["head","106,40 128,44 138,58 136,74 122,82 104,80 92,70 92,52"],
+      ["extra","88,36 96,18 106,32 118,12 128,30 140,18 146,36"]],
+    dots: [[108,60,3],[126,60,3]], beam: [192,124] },
+
+  shimo: { parts: [
+      ["tail","56,110 32,116 12,132 34,124 56,120"],
+      ["body","58,104 100,86 152,92 176,108 172,136 148,150 76,150 56,132"],
+      ["head","168,90 200,84 210,102 198,120 170,118"],
+      ["extra","78,88 86,62 96,86"],["extra","104,82 112,54 122,82"],["extra","130,84 140,58 148,86"],
+      ["arm","196,110 214,124 220,140 196,124"]],
+    dots: [[186,98,3]], beam: [214,104] },
+
+  gorosaurus: { parts: [
+      ["tail","82,108 54,118 24,132 52,126 80,120"],
+      ["body","84,88 116,78 142,90 152,112 146,132 138,152 118,152 116,134 104,132 100,152 82,152 78,130 74,108"],
+      ["head","140,76 174,70 186,86 170,100 142,98"],
+      ["arm","132,100 146,108 150,120 138,114 130,106"]],
+    dots: [[160,80,2.8]], beam: [188,86] },
+
+  manda: { parts: [
+      ["tail","8,152 34,120 62,142 92,112 122,134 152,104 184,126 190,140 152,118 122,148 92,126 62,156 34,134 12,160"],
+      ["body","148,106 176,98 194,106 192,122 166,128 146,122"],
+      ["head","186,96 216,88 226,104 208,120 186,118"],
+      ["extra","178,88 190,66 200,90"],["extra","192,92 210,74 214,96"]],
+    dots: [[208,100,2.8]], beam: [228,102] },
+
+  mecha: { parts: [
+      ["tail","82,106 58,116 30,126 8,138 32,132 58,126 80,122"],
+      ["body","178,42 158,32 138,38 126,52 112,58 98,62 86,70 78,88 76,106 80,140 78,154 98,154 96,138 106,128 112,140 110,154 130,154 128,134 126,110 124,90 130,72 142,60 156,52 170,48"],
+      ["extra","110,58 116,40 122,58"],["extra","96,64 102,46 108,64"],["extra","84,72 90,54 96,72"],
+      ["arm","126,80 144,88 152,102 138,100 124,90"],
+      ["extra","88,96 122,92 122,100 88,104"]],
+    dots: [[160,44,3.4]], beam: [182,48] }
+};
+
+/* ---------------- scenes ---------------- */
+const SCENES = {
+  ocean:   { sky:["#0a2230","#16404d"], orb:[196,36,14,"#a9d8e4"], far:"0,124 46,96 84,118 128,92 176,116 218,94 240,120 240,180 0,180", near:"0,142 240,142 240,180 0,180", nearFill:"#04141c", pcount:0, cloud:2 },
+  jungle:  { sky:["#0b2018","#1c3a26"], orb:[38,34,11,"#cfe6c4"], far:"0,120 30,92 58,116 92,88 124,114 158,86 194,116 240,94 240,180 0,180", near:"0,146 240,146 240,180 0,180", nearFill:"#04140c", pcount:14, pcolor:"#7fd6a0", cloud:1 },
+  alps:    { sky:["#101a2c","#27354c"], orb:[200,32,13,"#dfe7f5"], far:"0,132 34,84 62,116 96,52 132,110 168,66 206,120 240,96 240,180 0,180", near:"0,150 240,150 240,180 0,180", nearFill:"#0a1018", pcount:20, pcolor:"#cfe0f5", cloud:2 },
+  volcano: { sky:["#2a0f0c","#5a2314"], orb:null, far:"0,138 44,104 80,58 104,88 128,54 160,102 200,118 240,136 240,180 0,180", near:"0,152 240,152 240,180 0,180", nearFill:"#180604", pcount:22, pcolor:"#ff9a4a", cloud:1 },
+  ice:     { sky:["#0a1a2a","#1d3f56"], orb:[44,30,12,"#e8f4ff"], far:"0,128 40,96 70,124 108,88 148,122 184,94 222,126 240,110 240,180 0,180", near:"0,146 240,146 240,180 0,180", nearFill:"#061420", pcount:26, pcolor:"#dff0ff", cloud:2 },
+  island:  { sky:["#122032","#2c4560"], orb:[204,34,12,"#f2dfae"], far:"0,130 40,110 76,74 112,108 148,88 190,118 240,106 240,180 0,180", near:"0,148 240,148 240,180 0,180", nearFill:"#07121a", pcount:8, pcolor:"#9fd0e0", cloud:2 },
+  cavern:  { sky:["#08121a","#132430"], orb:null, far:"0,0 14,42 26,10 42,54 58,14 74,46 92,8 110,50 128,12 148,44 166,8 184,48 202,14 220,44 240,6 240,0", near:"0,150 240,150 240,180 0,180", nearFill:"#050d13", pcount:10, pcolor:"#5fb0c4", cloud:0 },
+  hollow:  { sky:["#12233a","#3a5b70"], orb:[120,30,18,"#ffe9b0"], far:"0,126 40,98 72,120 106,86 142,118 178,92 214,122 240,104 240,180 0,180", near:"0,148 240,148 240,180 0,180", nearFill:"#0a1a1a", pcount:12, pcolor:"#ffd98a", cloud:3 },
+  throne:  { sky:["#1e1224","#3d2440"], orb:null, far:"0,140 26,86 48,120 72,70 98,116 124,66 152,118 178,80 206,124 240,96 240,180 0,180", near:"0,150 240,150 240,180 0,180", nearFill:"#100812", pcount:14, pcolor:"#c9a0e0", cloud:1 },
+  city:    { sky:["#141726","#33384f"], orb:[36,32,11,"#e6e0f0"], far:"city", near:"0,152 240,152 240,180 0,180", nearFill:"#0a0c14", pcount:10, pcolor:"#ffd08a", cloud:2 },
+  sea:     { sky:["#04121c","#0a2836"], orb:null, far:"0,120 60,112 120,122 180,110 240,120 240,180 0,180", near:"0,146 240,146 240,180 0,180", nearFill:"#02090f", pcount:16, pcolor:"#7fd8e8", cloud:0 },
+  factory: { sky:["#161418","#2e2a30"], orb:null, far:"city", near:"0,150 240,150 240,180 0,180", nearFill:"#0c0a0e", pcount:12, pcolor:"#ff8a6a", cloud:1 }
+};
+const CITY = (function(){
+  const seed = [22,54,14,70,30,44,18,62,26,50,12,66,34,48,20,58];
+  let x = -4, out = "";
+  seed.forEach((h, i) => { const w = 12 + (i % 3) * 6; out += '<rect x="'+x+'" y="'+(150-h)+'" width="'+w+'" height="'+h+'"/>'; x += w + 3; });
+  return out;
+})();
+
+function sceneSVG(key, id){
+  const s = SCENES[key] || SCENES.ocean;
+  let out = '<defs><linearGradient id="sky'+id+'" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" stop-color="'+s.sky[0]+'"/><stop offset="100%" stop-color="'+s.sky[1]+'"/></linearGradient></defs>' +
+    '<rect x="0" y="0" width="240" height="180" fill="url(#sky'+id+')"/>';
+  if (s.orb) out += '<circle cx="'+s.orb[0]+'" cy="'+s.orb[1]+'" r="'+s.orb[2]+'" fill="'+s.orb[3]+'" opacity="0.5"/>';
+  for (let i = 0; i < (s.cloud || 0); i++) {
+    const y = 26 + i * 22, d = 26 + i * 9;
+    out += '<ellipse class="cloud" cx="0" cy="'+y+'" rx="34" ry="7" fill="#ffffff" style="animation-duration:'+d+'s;animation-delay:-'+(i*7)+'s"/>';
+  }
+  out += '<g class="bgfar" fill="#0e1a24">' + (s.far === "city" ? CITY : '<polygon points="'+s.far+'"/>') + '</g>';
+  for (let i = 0; i < (s.pcount || 0); i++) {
+    const x = (i * 37 + 11) % 236, r = 0.8 + (i % 3) * 0.5, d = 5 + (i % 5) * 2.4;
+    out += '<circle class="particle" cx="'+x+'" cy="0" r="'+r+'" fill="'+(s.pcolor||"#fff")+'" opacity="0.5" ' +
+           'style="animation-duration:'+d+'s;animation-delay:-'+((i*0.7)%d).toFixed(1)+'s"/>';
+  }
+  out += '<g class="bgnear"><polygon points="'+s.near+'" fill="'+s.nearFill+'"/></g>';
+  return out;
+}
+
+function titanSVG(id, color, opts){
+  const r = RIG[id]; if (!r) return "";
+  opts = opts || {};
+  const parts = r.parts.map(p =>
+    '<polygon class="sil g-' + p[0] + '" points="' + p[1] + '"/>').join("");
+  const dots = (r.dots || []).map(d =>
+    '<circle class="glowdot g-glow" cx="'+d[0]+'" cy="'+d[1]+'" r="'+d[2]+'"/>').join("");
+  const tf = [];
+  if (opts.flip) tf.push("translate(240,0) scale(-1,1)");
+  if (opts.scale && opts.scale !== 1) tf.push("translate(" + (opts.dx||0) + "," + (opts.dy||0) + ") scale(" + opts.scale + ")");
+  else if (opts.dx || opts.dy) tf.push("translate(" + (opts.dx||0) + "," + (opts.dy||0) + ")");
+  return '<g style="color:' + color + '"' + (tf.length ? ' transform="' + tf.join(" ") + '"' : "") +
+         (opts.id ? ' id="' + opts.id + '"' : "") + '>' + parts + dots + '</g>';
+}
+
+let artSeq = 0;
+function stageArt(sceneKey, titanId, color, cls){
+  if (!S.settings.art) return "";
+  const id = "a" + (++artSeq);
+  return '<div class="stage-art ' + (cls || "short") + '">' +
+    '<svg viewBox="0 0 240 180" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Scene illustration">' +
+    sceneSVG(sceneKey, id) +
+    (titanId ? titanSVG(titanId, color, { scale: 0.82, dx: 22, dy: 24 }) : "") +
+    '</svg></div>';
+}
+
+/* =========================================================================
+   TITANS
+   ========================================================================= */
+const TITANS = {
+  godzilla:  { name:"Godzilla",      desig:"Titanus Gojira",          rig:"godzilla",  color:"var(--atomic)", role:"Protector", scene:"ocean",
+               note:"Apex predator of a forgotten age. Keeping the balance is his whole job." },
+  kong:      { name:"Kong",          desig:"Titanus Kong",            rig:"kong",      color:"var(--amber)",  role:"Protector", scene:"island",
+               note:"Last of his line. Thinks in tools and territory." },
+  mothra:    { name:"Mothra",        desig:"Titanus Mosura",          rig:"mothra",    color:"var(--violet)", role:"Protector", scene:"jungle",
+               note:"Queen of the Monsters, and the only one who ever chose to work with people." },
+  scylla:    { name:"Scylla",        desig:"Titanus Scylla",          rig:"scylla",    color:"var(--good)",   role:"Destroyer", scene:"ocean",
+               note:"Eight legs, no patience. Woken early and furious about it." },
+  behemoth:  { name:"Behemoth",      desig:"Titanus Behemoth",        rig:"behemoth",  color:"var(--good)",   role:"Protector", scene:"jungle",
+               note:"A mountain with tusks. Everywhere he walks, the forest comes back." },
+  methuselah:{ name:"Methuselah",    desig:"Titanus Methuselah",      rig:"methuselah",color:"var(--ink-soft)",role:"Neutral",  scene:"alps",
+               note:"So old the old maps drew him as a mountain range." },
+  rodan:     { name:"Rodan",         desig:"Titanus Rodan",           rig:"rodan",     color:"var(--ember)",  role:"Destroyer", scene:"volcano",
+               note:"The Fire Demon. Leaves a volcano faster than the sound of him does." },
+  ghidorah:  { name:"King Ghidorah", desig:"Titanus Ghidorah",        rig:"ghidorah",  color:"var(--ember)",  role:"Destroyer", scene:"ice",
+               note:"Three heads, one appetite, and not from this planet." },
+  crawler:   { name:"Skullcrawler",  desig:"Titanus Cranium Reptant", rig:"crawler",   color:"var(--good)",   role:"Destroyer", scene:"island",
+               note:"Two arms, a long tail and a permanent bad mood." },
+  warbat:    { name:"Warbat",        desig:"Titanus Serpens Alatus",  rig:"warbat",    color:"var(--violet)", role:"Destroyer", scene:"cavern",
+               note:"Half snake, half wing. Coils first and asks nothing." },
+  tiamat:    { name:"Tiamat",        desig:"Titanus Tiamat",          rig:"tiamat",    color:"var(--atomic)", role:"Destroyer", scene:"hollow",
+               note:"Guards a river of wind at the edge of the Hollow Earth." },
+  skarking:  { name:"Skar King",     desig:"Titanus Gorilla Rex",     rig:"skarking",  color:"var(--ember)",  role:"Destroyer", scene:"throne",
+               note:"Rules his tribe with a whip and a stolen crystal." },
+  shimo:     { name:"Shimo",         desig:"Titanus Shimo",           rig:"shimo",     color:"var(--atomic)", role:"Neutral",   scene:"ice",
+               note:"An ice titan older than winter, forced to take orders." },
+  gorosaurus:{ name:"Gorosaurus",    desig:"Titanus Gorosaurus",      rig:"gorosaurus",color:"var(--good)",   role:"Protector", scene:"city",
+               note:"Digs up out of the ground and kangaroo-kicks. Genuinely." },
+  manda:     { name:"Manda",         desig:"Titanus Manda",           rig:"manda",     color:"var(--violet)", role:"Destroyer", scene:"sea",
+               note:"A sea dragon that sinks ships by wrapping all the way around them." },
+  mecha:     { name:"Mechagodzilla", desig:"Titanus Machina",         rig:"mecha",     color:"var(--ember)",  role:"Destroyer", scene:"factory",
+               note:"Built by people. Piloted by something that very much isn't." }
+};
+
+/* =========================================================================
+   CONTENT — every level carries a story chapter, read after it is cleared.
+   Word lists are key-constrained: only keys taught so far may appear.
+   ========================================================================= */
+const CONTENT = [
+{
+  id:"awaken", name:"The Titans Awaken", accent:"atomic", hero:"godzilla",
+  blurb:"1954 to now. Monarch's oldest files. Something under the ice is answering a signal, and every Titan on Earth is waking up to listen.",
+  stages:[
+    { name:"Home Row", keys:"a s d f  j k l ;", boss:"scylla", scene:"ocean",
+      brief:"Outpost 32, Bermuda. Your hands go on the home row and they stay there. Feel for the two little bumps — F under your left index finger, J under your right. Every key you will ever learn starts from here.",
+      bossLine:"Something with eight legs just came up through the seafloor cable trench.",
+      levels:[
+        { type:"drill", name:"Left Hand", title:"First Watch",
+          story:["Outpost 32 sits on a steel platform in the middle of the Bermuda ocean, held up by four legs and a lot of hope. Dr. Ling hands you a headset and points at an empty keyboard station near the window.",
+                 "\"That one's yours now,\" she says. Three thousand metres below your feet, down in the trench, the sonar has started picking up a sound that repeats."],
+          words:["as","ad","fad","sad","dad","add","fads","adds","dads","sass"] },
+        { type:"drill", name:"Right Hand", title:"The Repeating Sound",
+          story:["It isn't a whale. Whales change their song — they get bored, they show off, they answer each other. This one plays the exact same pattern every ninety seconds, with the same gap in the middle, like something knocking politely on a very large door.",
+                 "Ling puts it through the room speakers. Nobody says anything for a while."],
+          words:["all","ask","fall","lad","lass","asks","falls","alas","flask","salad"] },
+        { type:"echo", name:"Signal Check", title:"Contact",
+          story:["A survey ship radios in from twelve miles out. The captain's voice comes through flat and careful, the way people talk when they are trying very hard not to sound frightened.",
+                 "She says something came up alongside the hull, close enough to touch. She says she counted the legs. She says she counted eight."],
+          words:["ask","all","dad","fall","salad","flask","lad","sad"] }
+      ],
+      winStory:["Scylla backs off the platform and slides down into the dark, one leg at a time, until the water closes over the last of her.",
+                "Ling logs it as your first contact and puts your name on the file. Then she looks at your hands. \"Bumps,\" she says. \"Stay on the bumps.\""] },
+
+    { name:"Reach In", keys:"+ g  h", boss:"behemoth", scene:"jungle",
+      brief:"G and H sit right beside your index fingers. Reach across with the finger that is already there — never move your whole hand. Reach, type, come straight back to the bumps.",
+      bossLine:"A mountain in the Amazon just stood up. It has tusks.",
+      levels:[
+        { type:"drill", name:"G and H", title:"Trees in a Line",
+          story:["Monarch flies you south to a jungle outpost in the Amazon. From the helicopter you can see the reason they sent for you: a perfectly straight line of flattened trees, running forty kilometres through the green.",
+                 "It looks like somebody dragged one finger across the map."],
+          words:["gash","hash","dash","glad","flash","half","hall","flag","lash","saga"] },
+        { type:"drill", name:"Longer Holds", title:"Something Walking",
+          story:["The line is a trail, and the trail is fresh. Each footprint is deeper than you are tall and already filling with rainwater.",
+                 "Whatever made it is not running away from anything. Judging by the spacing, it is taking its time."],
+          words:["glass","shall","slash","halls","flags","gall","shag","flasks","salads","hags"] },
+        { type:"echo", name:"Radio Check", title:"Not a Hunt",
+          story:["Ling runs the readings twice, then a third time, because they don't make sense. Behind the creature, the forest is growing back — faster than it should, greener than it was.",
+                 "\"It isn't destroying anything,\" she says slowly. \"It's gardening.\""],
+          words:["glad","flash","half","glass","dash","hall","flag","shall"] }
+      ],
+      winStory:["Behemoth never actually fights you. He turns, looks down at the tiny bright thing making noise at his feet, and decides it isn't worth the trouble.",
+                "By the time the helicopter lifts off, the trail behind him has already started to disappear under new leaves."] },
+
+    { name:"Top Row Rises", keys:"+ e  i", boss:"methuselah", scene:"alps",
+      brief:"Now you go up. E sits above D — left middle finger. I sits above K — right middle finger. Up, type, and straight back down to home. Always back down.",
+      bossLine:"The ridge outside Munich is moving. Ridges are not supposed to move.",
+      levels:[
+        { type:"drill", name:"E and I", title:"The Ridge Moved",
+          story:["A hiker outside Munich sends Monarch a photograph and a complaint. The ridge above her village, she says, is in the wrong place — about forty metres to the left of where it stood last summer.",
+                 "Everyone laughs. Then somebody pulls the satellite photos, and stops laughing."],
+          words:["idea","field","shield","eagle","legal","aside","glide","ideas","ideal","alike"] },
+        { type:"drill", name:"Mixed Reach", title:"Older Than Maps",
+          story:["You go down into the archive and pull the old survey maps: 1620, 1780, 1902. On every single one, the ridge is drawn somewhere slightly different.",
+                 "Nobody ever noticed, because nobody lives long enough to notice."],
+          words:["hailed","failed","sailed","jailed","shelf","self","flee","jade","gale","killed"] },
+        { type:"echo", name:"Dictation One", title:"Waking Up",
+          story:["The ground temperature under the moss is climbing one degree a day. Deep sensors pick up a low sound underneath it — the same knock, the same ninety-second gap you first heard in the Bermuda trench.",
+                 "Whatever is asleep under that mountain has started listening."],
+          words:["field","shield","idea","eagle","glide","legal","alike","aside"] }
+      ],
+      winStory:["Methuselah rises far enough for you to see the shape of him — and then, slowly, decides against it, and settles back down into being a mountain range.",
+                "Ling marks the file NEUTRAL. \"He was never awake for us,\" she says. \"We just happened to be standing on him.\""] },
+
+    { name:"Full Reach", keys:"+ r  u", boss:"rodan", scene:"volcano",
+      brief:"R sits above F. U sits above J. Both index fingers, reaching up and inward. This is the last piece before you can spell most of what Monarch needs written down.",
+      bossLine:"The volcano at Isla de Mara just opened. Something came out of it faster than the sound did.",
+      levels:[
+        { type:"drill", name:"R and U", title:"The Mountain Opened",
+          story:["Isla de Mara. The volcano that every geologist on Earth called extinct has just taken the top off itself.",
+                 "Ash is coming down on the town like grey snow, and the last evacuation bus left twenty minutes ago, full."],
+          words:["guard","guide","rules","fired","hired","sugar","surge","urge","large","raid"] },
+        { type:"drill", name:"Under Pressure", title:"Inside the Cloud",
+          story:["Radar can't see through ash. What it can see is something moving inside the ash — circling, climbing, circling again, in a spiral that gets a little wider every pass.",
+                 "Ling's hand goes towards the alarm and stops halfway. \"That is not lava,\" she says."],
+          words:["figure","hurdle","shakes","grease","regarded","glared","erased","dealers","hailed","gradual"] },
+        { type:"echo", name:"Dictation Two", title:"Faster Than Sound",
+          story:["It comes out of the cloud so fast that the noise arrives afterwards. Every window on the island breaks in the same second, before anyone has heard a single wingbeat.",
+                 "Then the sound catches up, and it is the worst thing you have ever heard."],
+          words:["guard","guide","surge","large","figure","raid","sugar","rules"] }
+      ],
+      winStory:["Rodan folds his wings and drops out of the sky like something switched him off, and lands hard enough to crack the runway.",
+                "He isn't beaten. He has just decided there is a bigger animal in the world than him, and it isn't you — it's the one heading this way underwater at forty knots."] },
+
+    { name:"Monster Zero", keys:"+ t  y  o  p", boss:"ghidorah", scene:"ice",
+      brief:"Four new keys at once — you have earned it. T beside R, Y beside U, then O and P out on the right hand. From here on, Monarch needs real words.",
+      bossLine:"Outpost 32 is gone. Three heads came out of the Antarctic ice, and every Titan on Earth started listening.",
+      levels:[
+        { type:"drill", name:"T and Y", title:"Outpost 32 Is Gone",
+          story:["The message is eleven seconds long. Static, an alarm, and Dr. Ling saying your name once. Then nothing at all.",
+                 "Bermuda is a hole in the map now. Every seismograph on the planet is shaking at the same time, in the same rhythm."],
+          words:["try","tried","trail","artist","future","guitar","safety","steady","duty","rusty"] },
+        { type:"drill", name:"O and P", title:"Monster Zero",
+          story:["The Antarctic ice shelf splits open like a door being kicked. Three heads come up out of it on three long necks, and the sound they make is the signal — the one from the trench, the jungle, the ridge, the volcano.",
+                 "It was never a warning. It was a call, and it has been calling for a very long time."],
+          words:["hope","port","sport","story","glory","poster","profile","outpost","radio","polar"] },
+        { type:"echo", name:"Dictation Three", title:"Get to the Water",
+          story:["Every titan on the planet turns at once and starts walking the same direction, like iron filings finding a magnet.",
+                 "Ling's last order is still sitting in your headset, recorded eleven seconds before the end: get to the water, and stay well out of the way of the one that is coming to answer this."],
+          words:["outpost","story","guard","safety","future","glory","radio","trail"] }
+      ],
+      winStory:["Godzilla comes up out of the Pacific glowing so hot the rain turns to steam before it lands on him, and he does not stop walking.",
+                "When it is over he stands in the crater and roars, and one by one, all across the world, the Titans go down on their front legs.",
+                "Storyline one complete. Ling's file is closed and signed — by you."] }
+  ]
+},
+{
+  id:"hollow", name:"Descent to the Hollow Earth", accent:"amber", hero:"kong",
+  blurb:"Kong is the only one of his kind left on the surface, and he knows it. Below the crust there is a whole world with others in it, and a king down there who does not want a rival.",
+  stages:[
+    { name:"The Last Reaches", keys:"+ w  q  n  m", boss:"crawler", scene:"island",
+      brief:"W and Q finish the top row for your left hand. N and M drop down below for your right index finger. After this your fingers cover nearly the whole board.",
+      bossLine:"Kong wakes up hungry, and something long and pale is already in the cave with him.",
+      levels:[
+        { type:"drill", name:"W and Q", title:"The Dome",
+          story:["Kong lives under a dome now, on what is left of Skull Island. Monarch built it to keep him safe, and it does.",
+                 "From the inside it just looks like a very expensive cage with a fake sky painted on the roof."],
+          words:["power","tower","shadow","quiet","quake","water","weather","square","growl","howl"] },
+        { type:"drill", name:"N and M", title:"He Knows",
+          story:["Jia signs a question up at him and he answers it, slowly, with one enormous hand. Then he asks his own question, the same one he has asked every year since they brought him here.",
+                 "He is asking about others. There aren't any others up here. He worked that out a long time before anybody told him."],
+          words:["titan","monster","human","moment","signal","warning","mountain","island","tunnel","engine"] },
+        { type:"echo", name:"Deep Signal", title:"The Cave",
+          story:["Kong wakes before dawn, which he never does, because something is already in the cave with him.",
+                 "It has been coming closer very quietly for about an hour, and it is nearly close enough now."],
+          words:["titan","tunnel","monster","island","warning","power","quake","mountain"] }
+      ],
+      winStory:["One punch. That is the entire fight.",
+                "Kong drags the body outside so the smell doesn't ruin the cave, then goes back to sleep. Skullcrawlers have never once learned this lesson, and they never will."] },
+
+    { name:"Under the Crust", keys:"+ v  c", boss:"warbat", scene:"cavern",
+      brief:"V sits below F. C sits below D. Left hand, curling downward this time. These two unlock most of the words Monarch actually writes down.",
+      bossLine:"The tunnel narrows, and then the walls start to move. The walls have scales.",
+      levels:[
+        { type:"drill", name:"V and C", title:"The Vertical Shaft",
+          story:["There is a hole in Antarctica that goes down further than any hole has business going. Monarch drops a ship into it.",
+                 "Halfway down, gravity turns over — up becomes down, down becomes up — and then there is a sky underneath the world."],
+          words:["ancient","atomic","creature","science","contain","volcano","canyon","machine","victory","crater"] },
+        { type:"drill", name:"Monarch Terms", title:"Down the Tunnels",
+          story:["Kong goes down on foot, because he doesn't fit in anything else. The tunnels are older than the surface, and they were carved — you can tell, because the walls have handprints pressed into them.",
+                 "The handprints are the same shape as his. They are just a great deal older."],
+          words:["command","activate","vertical","cavern","recover","monarch","evacuate","current","vector","container"] },
+        { type:"echo", name:"Dictation Four", title:"The Walls Move",
+          story:["In the narrowest passage the tunnel gets tighter. Then it gets tighter again, which tunnels do not usually do twice.",
+                 "Kong puts a hand on the wall to steady himself, and the wall flinches."],
+          words:["ancient","volcano","creature","machine","canyon","command","science","crater"] }
+      ],
+      winStory:["Kong wedges the Warbat against the rock, holds it there until it stops arguing, and keeps walking without looking back.",
+                "Forty minutes later the passage opens out, and there is sky in front of him. Sky. Underground."] },
+
+    { name:"Every Key", keys:"+ b  x  z  ,  .", boss:"tiamat", scene:"hollow",
+      brief:"The last four letters, and your first two punctuation marks. After this level there is not one key left on the board that you have not been taught.",
+      bossLine:"A river made of wind, with something enormous coiled up inside it.",
+      levels:[
+        { type:"drill", name:"B and X", title:"A Sun That Isn't",
+          story:["Kong stops walking, which he almost never does. Below him: forests, rivers, ruins with the roofs still on them, and a light hanging in the middle of the sky.",
+                 "It is not the sun. It has never been the sun. It does the job anyway."],
+          words:["battle","beast","bridge","orbit","exit","beacon","rebuild","index","expand","exact"] },
+        { type:"drill", name:"Z and Marks", title:"The Iwi",
+          story:["There are people down here. There have been people down here the whole time, quietly, for thousands of years.",
+                 "They have a wall covered floor to ceiling in paintings, and one of the paintings shows a giant ape fighting something that carries a whip."],
+          words:["size","zone","frozen","horizon","blizzard","hazard","amazing","citizen","zoology","quartz"] },
+        { type:"echo", name:"Dictation Five", title:"The Wind River",
+          story:["To reach the far side you have to cross a river made of wind — a band of screaming air a kilometre wide, running from one horizon to the other.",
+                 "Nothing has crossed it in a thousand years. Not because of the wind. Because of what lives in it."],
+          words:["battle","frozen","horizon","bridge","beacon","hazard","beast","zone"] }
+      ],
+      winStory:["Tiamat uncoils, slides back into the wind, and lets him pass. It is not surrender exactly. It is more like being let through a door by somebody who could have said no.",
+                "Ahead, on the far bank, there is a throne. It has been carved out of bone."] },
+
+    { name:"The Skar King", keys:"+ Shift", boss:"skarking", scene:"throne",
+      brief:"Capital letters. Hold Shift with the hand opposite the letter — left-hand letter, right-hand Shift. Never both hands on the same side of the board.",
+      bossLine:"He has a whip made from a spine, and an ice titan on a leash. He has been waiting a long time for another ape.",
+      levels:[
+        { type:"drill", name:"Names", title:"The Tribe",
+          story:["On the far side Kong finds them. Dozens of them — his own kind, hauling, carrying, digging, every one of them wearing something around the neck.",
+                 "Not one of them looks up at him. All of them are watching the throne."],
+          words:["Kong","Godzilla","Mothra","Rodan","Monarch","Shimo","Tiamat","Scylla","Behemoth","Ghidorah"] },
+        { type:"drill", name:"Places", title:"The Whip",
+          story:["The Skar King's whip is made from the spine of something he beat a very long time ago, and he wears it the way other kings wear a crown.",
+                 "He has never lost a fight. Mostly this is because he has never once had a fair one."],
+          words:["Skull Island","Hollow Earth","Castle Bravo","Antarctica","Isla de Mara","Outpost 32","Apex Cybernetics","Bermuda","Vertical Shaft","Iwi Village"] },
+        { type:"echo", name:"Roll Call", title:"The Crystal",
+          story:["The ice titan standing behind the throne is older than the Skar King, and stronger, and she does exactly what he tells her.",
+                 "That is because of the crystal in his other hand. When she disagrees, he squeezes it, and it hurts her."],
+          words:["Kong","Mothra","Monarch","Godzilla","Shimo","Rodan","Tiamat","Behemoth"] }
+      ],
+      winStory:["The crystal comes apart in Kong's fist, and every head in the valley turns at the sound.",
+                "Shimo stops mid-step, blinks, and goes quiet for the first time in a thousand years. The tribe puts down what it is carrying.",
+                "Storyline two complete. Kong has a family again, and he did not have to be the biggest thing in the world to get one."] }
+  ]
+},
+{
+  id:"destroy", name:"Destroy All Monsters", accent:"violet", hero:"godzilla",
+  blurb:"Every Titan on Earth has been gathered onto one island for their own safety. Then something reaches down from orbit and takes the controls. From here on you don't just type — you write.",
+  stages:[
+    { name:"Full Sentences", keys:"+ space  capitals  period", boss:"gorosaurus", scene:"city",
+      brief:"A sentence starts with a capital and ends with a period. Your thumb takes the space bar — either thumb, whichever one feels natural. Try not to look down.",
+      bossLine:"The ground splits open outside Paris and something kicks its way up out of it.",
+      levels:[
+        { type:"drill", name:"Short Orders", title:"Monster Island",
+          story:["Monarch's newest idea is also its biggest: one island, every titan, no fences, no cages — just a place where they can be left completely alone.",
+                 "For three years it works perfectly. Everyone stops being frightened. That turns out to be the dangerous part."],
+          words:["Godzilla is awake.","The island is quiet.","Monarch has the signal.","Kong is climbing.","Mothra is hatching.","Hold the line."] },
+        { type:"drill", name:"Field Notes", title:"The Signal from Orbit",
+          story:["On a Tuesday in March, at four minutes past nine, every titan on the island stops what it is doing in the same second and looks straight up.",
+                 "Something above the atmosphere has started giving instructions, and all of them can hear it."],
+          words:["The titans have left Monster Island.","Rodan is heading for the coast.","We lost contact with the outpost.","Something is broadcasting from orbit.","Every titan is moving in the same direction."] },
+        { type:"echo", name:"Dictation Six", title:"They're Leaving",
+          story:["By morning the island is empty. Eleven titans, eleven different directions, and not one of them wandering.",
+                 "Every single one is walking a straight line towards a city."],
+          words:["The island is quiet.","Hold the line.","Monarch has the signal.","Godzilla is awake."] }
+      ],
+      winStory:["Gorosaurus shakes his head like a dog coming out of water, and the signal falls off him.",
+                "He looks around at the broken street, then at you, then at his own feet, completely baffled about how he got here. One free. Ten to go."] },
+
+    { name:"Punctuation", keys:"+ ,  '  ?  \"", boss:"manda", scene:"sea",
+      brief:"Commas, apostrophes and question marks. The apostrophe lives right beside your right pinky. Quotation marks are the same key with Shift held down.",
+      bossLine:"Something wraps around the submarine and starts to squeeze.",
+      levels:[
+        { type:"drill", name:"Apostrophes", title:"Trace It Back",
+          story:["To jam a signal you have to find it first. Monarch puts a submarine into the North Pacific, directly underneath the strongest part of the beam, and starts listening upward.",
+                 "The boat is old, slow and quiet, which is exactly why they chose it."],
+          words:["It's moving.","We're too late.","Don't fire yet.","That isn't Godzilla.","Kong's hand is bleeding.","They're all awake now."] },
+        { type:"drill", name:"Questions", title:"Something in the Dark",
+          story:["At two hundred metres the sonar stops. Not breaks — stops, because something has wrapped itself around the outside of the hull and is holding the array shut.",
+                 "Then, very gently, it begins to squeeze."],
+          words:["Where is it going?","Can you hear that?","Who is controlling them?","Is the signal still active?","How many titans are left?"] },
+        { type:"echo", name:"Dictation Seven", title:"The Moon",
+          story:["They get the trace out four seconds before they lose the boat, and everyone in the control room reads it twice.",
+                 "The transmitter is not in orbit. It is sitting on the far side of the moon, and by the look of the dust on it, it has been sitting there a very long time."],
+          words:["It's moving.","Don't fire yet.","Can you hear that?","We're too late."] }
+      ],
+      winStory:["Manda lets go of the wreck and sinks away, and for a moment the whole ocean is quiet.",
+                "The crew get out. The boat doesn't. But the trace is in your hands now, and it points somewhere nobody expected."] },
+
+    { name:"The Numbers Row", keys:"+ 1 2 3 4 5 6 7 8 9 0", boss:"mecha", scene:"factory",
+      brief:"The top row. Every finger reaches up one more time, in the same column it already owns. Monarch files everything by year and coordinate, so you are going to need these.",
+      bossLine:"Apex built a titan out of metal. Something inside it woke up and took the wheel.",
+      levels:[
+        { type:"drill", name:"Years on File", title:"Apex",
+          story:["A company called Apex Cybernetics says it has the answer: stop begging the titans to behave, and build one of our own that takes orders.",
+                 "They show the board a skull wired into a chair, and the whole room stands up and applauds."],
+          words:["1954","1962","1973","2014","2019","2021","2024","Outpost 32","Outpost 55","Level 9"] },
+        { type:"drill", name:"Coordinates", title:"The Pilot",
+          story:["The skull is Ghidorah's. They pulled it off the seabed and nobody thought to ask whether it was finished with.",
+                 "Apex believed they were building a machine. What they were actually building was a body, and something dead has been waiting extremely patiently for one."],
+          words:["Castle Bravo, 1954","Depth 3200 meters","Bearing 047 by 12","Sector 7, all clear","Contact at 0400 hours"] },
+        { type:"echo", name:"Dictation Eight", title:"It Wakes Up",
+          story:["In the Hong Kong sub-level, Mechagodzilla opens its eyes, kills the power to the entire facility, and stops taking orders.",
+                 "The whole thing takes under four seconds. Somebody had put a stop button on it. Somebody had put the stop button on the outside."],
+          words:["1954","2024","Outpost 32","Level 9"] }
+      ],
+      winStory:["The main cable melts through and Mechagodzilla goes dark from the head down, one panel at a time.",
+                "Built by people, beaten by two of them who finally bothered to work together — and by a very large ape with an axe."] },
+
+    { name:"The Last Transmission", keys:"everything you have", boss:"ghidorah", scene:"ice",
+      brief:"Full paragraphs now, using every key you own. This is the whole job: getting the words out of your head and onto the screen without stopping to think about your hands at all.",
+      bossLine:"The signal from orbit stops. Ghidorah doesn't need it any more. It never really did.",
+      levels:[
+        { type:"drill", name:"Report One", title:"The Last Free Frequency",
+          story:["With Apex gone and the moon transmitter dark, the titans start coming out of it one at a time, blinking, like a room full of people waking up at their desks.",
+                 "Rodan lands. Behemoth turns around. Scylla goes back into the water without being asked."],
+          words:["Monarch established contact with the first titan in 1954. The file was sealed for seventy years.",
+                 "The Hollow Earth sits beneath the crust, lit by a sun that isn't a sun."] },
+        { type:"drill", name:"Report Two", title:"One Didn't Stop",
+          story:["Every titan on Earth shakes off the signal except one.",
+                 "King Ghidorah never needed instructions and never took any. It simply enjoyed having help, and now the help has gone, and it is still standing in the middle of the ice, waiting."],
+          words:["Kong found his own kind at the bottom of the world, and a king who did not want to share it.",
+                 "Every titan on the island answered the same call at the same second. Someone was giving orders."] },
+        { type:"echo", name:"Final Dictation", title:"Everyone",
+          story:["Godzilla comes up out of the Pacific. Kong comes up out of the ground. Mothra comes down out of the clouds with her wings lit from the inside.",
+                 "For the first time in the entire history of this planet, every one of them is on the same side, facing the same way."],
+          words:["The titans are not the enemy.","We are guests here.","Hold the line."] }
+      ],
+      winStory:["Three heads down. The last one takes all of them together, and it takes a long time.",
+                "Afterwards the Titans go home — into the sea, into the ground, into the clouds — and the world is very quiet and very strange and still here.",
+                "Storyline three complete. Every word of that report was typed by you, and the whole keyboard belongs to you now."] }
+  ]
+},
+{
+  id:"archive", name:"The Burned Archive", accent:"good", hero:"kong",
+  blurb:"Ghidorah burned Monarch's servers on the way past, and every Titan file on Earth went with them. Nobody can warn anybody about anything until the names are back — and the only way to write a titan's name is to go and stand in front of it.",
+  stages:[
+    { name:"Names on the Wall", keys:"capitals + every letter", boss:"shimo", scene:"ice",
+      brief:"This whole storyline is about names. Capital letter first, then the rest — and titan names are long, so slow right down. Getting it exactly right matters more here than anywhere else in the game.",
+      bossLine:"The ice titan is guarding the north archive, and she has not been told the war is over.",
+      levels:[
+        { type:"drill", name:"Short Names", title:"Nothing Left to Read",
+          story:["The server room at Castle Bravo is four hundred metres of melted racks. Seventy years of files — every sighting, every measurement, every name — gone in about nine seconds.",
+                 "Without the names the containment network cannot tell one titan from another. It cannot warn a city which one is coming. As far as the system is concerned, there are no titans at all any more."],
+          words:["Kong","Rodan","Manda","Shimo","Mothra","Scylla","Tiamat","Warbat","Godzilla","Behemoth"] },
+        { type:"drill", name:"Long Names", title:"The Naming Wall",
+          story:["Jia knows where the backup is, and it isn't a computer. Deep in the Hollow Earth the Iwi keep a wall, and on the wall in careful rows is every titan anyone has ever met.",
+                 "They have been keeping it up to date for eight thousand years, which is roughly seven thousand nine hundred years longer than Monarch managed."],
+          words:["Ghidorah","Methuselah","Gorosaurus","Skullcrawler","Mechagodzilla","Skar King","Monarch","Titanus","Hollow Earth","Skull Island"] },
+        { type:"echo", name:"Say the Name", title:"Say It Out Loud",
+          story:["The rule of the wall is that you have to say the name out loud while you write it. Jia signs it twice to make sure you understood.",
+                 "It isn't a superstition. A name you can say is a name you will remember at four in the morning when something enormous is coming and somebody asks you which one it is."],
+          words:["Kong","Rodan","Mothra","Shimo","Scylla","Tiamat","Godzilla","Behemoth"] }
+      ],
+      winStory:["Shimo lowers her head, breathes out a fog bank you could lose a town in, and steps aside.",
+                "Kong writes her name on the wall himself, badly, one enormous finger at a time. It counts."] },
+
+    { name:"Designations", keys:"two words + capitals", boss:"manda", scene:"sea",
+      brief:"Monarch does not write \"Godzilla\" on a file. It writes \"Titanus Gojira\". Two words, two capitals, one space in the middle — thumb on the space bar, and keep going without stopping.",
+      bossLine:"The southern archive went down with a ship, and something is still coiled around the wreck.",
+      levels:[
+        { type:"drill", name:"Titanus, Part One", title:"The Proper Names",
+          story:["Every titan has two names. The one people shout, and the one Monarch writes down.",
+                 "The written one always starts with Titanus, which just means \"of the titans\", and then the old name — the one from whichever language got there first."],
+          words:["Titanus Gojira","Titanus Kong","Titanus Mosura","Titanus Rodan","Titanus Ghidorah","Titanus Scylla"] },
+        { type:"drill", name:"Titanus, Part Two", title:"The Southern Archive",
+          story:["There was a second copy. Monarch kept it on a ship, because a ship can be moved and a building cannot.",
+                 "The ship is now on the bottom of the Philippine Sea in two pieces, and the thing that put it there has not left."],
+          words:["Titanus Behemoth","Titanus Methuselah","Titanus Tiamat","Titanus Shimo","Titanus Manda","Titanus Machina"] },
+        { type:"echo", name:"Designation Check", title:"Down to the Wreck",
+          story:["Kong cannot swim to the bottom of the Philippine Sea, so he walks. It takes him two days and he does not once let go of the axe.",
+                 "The drives are still in there. They are also still wrapped in about forty metres of sea dragon."],
+          words:["Titanus Gojira","Titanus Kong","Titanus Mosura","Titanus Rodan"] }
+      ],
+      winStory:["Manda uncoils and vanishes into the dark, and the drive case comes up in Kong's fist, dented but sealed.",
+                "Half the archive is back. It is the wrong half, but it is a start."] },
+
+    { name:"Classifications", keys:"names + commas + periods", boss:"warbat", scene:"cavern",
+      brief:"A full record is a name, a comma, a classification and a period. Protector, Destroyer or Neutral. Small marks, easy to skip — don't skip them.",
+      bossLine:"Something is nesting in the tunnel where the last of the records ended up.",
+      levels:[
+        { type:"drill", name:"Full Records", title:"Protector or Destroyer",
+          story:["Monarch sorts every titan into one of three words. Protector. Destroyer. Neutral.",
+                 "Jia thinks the whole system is silly. She points out that Kong has been all three of them, sometimes in the same afternoon."],
+          words:["Titanus Rodan, Destroyer.","Titanus Mosura, Protector.","Titanus Behemoth, Protector.","Titanus Ghidorah, Destroyer.","Titanus Scylla, Destroyer."] },
+        { type:"drill", name:"The Grey Files", title:"The Ones In Between",
+          story:["The Neutral files are the interesting ones. Methuselah, who has never done anything to anybody. Shimo, who only did what she was made to do.",
+                 "Somebody a long time ago wrote in the margin of Shimo's file: \"not a destroyer — a prisoner\". Nobody ever changed the classification."],
+          words:["Titanus Methuselah, Neutral.","Titanus Shimo, Neutral.","Titanus Gojira, Protector.","Titanus Kong, Protector.","Titanus Machina, Destroyer."] },
+        { type:"echo", name:"Records Check", title:"The Last Tunnel",
+          story:["The final crate of paper records ended up in a service tunnel under the vertical shaft, because somebody in 1974 thought that was a clever place for it.",
+                 "It was. It is also now somebody's nest."],
+          words:["Titanus Rodan, Destroyer.","Titanus Mosura, Protector.","Titanus Shimo, Neutral.","Titanus Kong, Protector."] }
+      ],
+      winStory:["The Warbat goes back into the rock and Kong hands the crate up through the shaft with the care of somebody carrying eggs.",
+                "Every name is accounted for now except one, and that one is currently walking towards Hong Kong on its own two feet."] },
+
+    { name:"The Roll Call", keys:"everything you have", boss:"mecha", scene:"factory",
+      brief:"Whole sentences with titan names inside them. This is the last set of exercises in the whole game — everything you have learned, in one place, at your own speed.",
+      bossLine:"Apex built two. The second one has the entire titan database inside its head, and it does not intend to give it back.",
+      levels:[
+        { type:"drill", name:"Facts on File", title:"The Second Unit",
+          story:["Apex never built one Mechagodzilla. They built two, and shipped the spare to a warehouse in Hong Kong labelled AGRICULTURAL PARTS.",
+                 "Inside its skull is a complete copy of every titan file Monarch ever wrote — stolen years ago, and now the only copy left anywhere on Earth."],
+          words:["Godzilla and Kong are not the same species.","Mothra hatched in a temple on Infant Island.","Rodan sleeps inside a volcano and always has."] },
+        { type:"drill", name:"The Whole Record", title:"Out-Name It",
+          story:["You cannot smash the database out of it. Smash the head and the last copy of seventy years of work goes with it.",
+                 "So you do the only other thing available: you make it read the files out. Every name you type, it has to match. And unlike you, it has never actually met any of them."],
+          words:["Ghidorah came from somewhere outside the solar system.","Behemoth walks, and the rainforest grows back behind him.","Shimo is older than the last ice age."] },
+        { type:"echo", name:"Final Roll Call", title:"Every Name",
+          story:["Jia gets the transfer running with about nine seconds to spare, and the wall in the Hollow Earth and the servers at Castle Bravo end up holding the same list for the first time in history.",
+                 "Eight thousand years of names, and yours is at the bottom of the file as the person who put them back."],
+          words:["Every titan has a name.","Say it and the file opens.","Mothra is the Queen of the Monsters."] }
+      ],
+      winStory:["The second unit runs out of names before you do, freezes with its jaw half open, and powers down where it stands.",
+                "The archive is whole. Somewhere under the ice Shimo is asleep and nobody is holding a crystal, and somewhere under the Pacific Godzilla has stopped listening for anything at all.",
+                "Storyline four complete. You have typed every titan's name on Earth, correctly, from memory. There is nothing left on this keyboard that you cannot spell."] }
+  ]
+}
+];
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+const SAVE_KEY = "titan-protocol-v2";
+const DEFAULTS = {
+  cleared: {}, cards: {}, keyStats: {}, read: {},
+  tutorialDone: false,
+  settings: { sound:true, speech:true, motion:true, art:true, keyboard:true, music:true, musicVol:0.5, contrast:"normal", typeSize:1.9 }
+};
+let S = load();
+function load(){
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return seedDefaults();
+    const p = JSON.parse(raw);
+    return Object.assign(seedDefaults(), p, { settings: Object.assign({}, DEFAULTS.settings, p.settings || {}) });
+  } catch(e) { return seedDefaults(); }
+}
+function seedDefaults(){
+  const d = JSON.parse(JSON.stringify(DEFAULTS));
+  try { if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) d.settings.motion = false; } catch(e) {}
+  return d;
+}
+function save(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch(e) {} }
+function applySettings(){
+  const r = document.documentElement;
+  r.setAttribute("data-motion", S.settings.motion ? "on" : "off");
+  r.setAttribute("data-contrast", S.settings.contrast);
+  r.style.setProperty("--type-size", S.settings.typeSize + "rem");
+}
+
+/* ---------------- audio ---------------- */
+let AC = null;
+function tone(freq, ms, vol, type){
+  if (!S.settings.sound) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === "suspended") AC.resume();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.05, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + ms / 1000);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + ms / 1000);
+  } catch(e) {}
+}
+const SFX = {
+  ok:   () => tone(660, 55, 0.03),
+  word: () => { tone(760, 80, 0.05); setTimeout(() => tone(990, 110, 0.05), 70); },
+  miss: () => tone(210, 90, 0.028),
+  hit:  () => { tone(140, 150, 0.06, "sawtooth"); setTimeout(() => tone(100, 200, 0.05, "sawtooth"), 90); },
+  hurt: () => { tone(80, 300, 0.055, "square"); },
+  win:  () => { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 240, 0.05), i * 115)); }
+};
+function speak(text){
+  if (!S.settings.speech || !window.speechSynthesis) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.86;
+    speechSynthesis.speak(u);
+  } catch(e) {}
+}
+
+/* =========================================================================
+   MUSIC
+   Two sources, in order of preference:
+     1. Real tracks, if they are sitting next to this file in ./music/
+        (explore.mp3, battle.mp3, story.mp3, victory.mp3). Scott Buckley's
+        library at scottbuckley.com.au is CC BY 4.0 — free even commercially,
+        credit required. Drop his MP3s in with those names and they play.
+        Note: the hosted version blocks outside audio, so this path only
+        works when the file is run locally.
+     2. Otherwise an original score generated live in the browser — no files,
+        no licence, works anywhere. Slow minor pads, low drone, and for the
+        boss fights a timpani pulse underneath.
+   ========================================================================= */
+const MUSIC = (function(){
+  const THEMES = {
+    explore: { root:45, bpm:50, prog:[[0,3,7],[-4,0,3],[-2,3,7],[-5,0,4]], gain:0.13, drums:false, mel:0.16, wave:"triangle" },
+    story:   { root:48, bpm:44, prog:[[0,4,7],[-3,0,5],[-5,0,4],[-7,0,3]], gain:0.11, drums:false, mel:0.10, wave:"sine" },
+    battle:  { root:33, bpm:92, prog:[[0,3,7],[0,3,10],[-2,3,6],[-3,0,4]], gain:0.16, drums:true,  mel:0.24, wave:"sawtooth" },
+    victory: { root:50, bpm:66, prog:[[0,4,7],[5,9,12],[-3,4,9],[0,4,7]], gain:0.15, drums:false, mel:0.30, wave:"triangle" }
+  };
+  const SCALE = [0,2,3,5,7,8,10];
+  let ctx = null, master = null, verbIn = null, timer = null, beat = 0, cur = null, audioEl = null, useFiles = null;
+
+  function mtof(m){ return 440 * Math.pow(2, (m - 69) / 12); }
+  function impulse(){
+    const len = Math.floor(ctx.sampleRate * 2.4), buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++){
+      const d = buf.getChannelData(c);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.8);
+    }
+    return buf;
+  }
+  function init(){
+    if (ctx) return true;
+    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return false; }
+    master = ctx.createGain();
+    master.gain.value = S.settings.musicVol;
+    master.connect(ctx.destination);
+    try {
+      const cv = ctx.createConvolver(); cv.buffer = impulse();
+      const w = ctx.createGain(); w.gain.value = 0.45;
+      cv.connect(w); w.connect(master); verbIn = cv;
+    } catch(e) { verbIn = null; }
+    return true;
+  }
+  function voice(midi, dur, type, gain, detune){
+    const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter(), t = ctx.currentTime;
+    o.type = type; o.frequency.value = mtof(midi); if (detune) o.detune.value = detune;
+    f.type = "lowpass"; f.frequency.value = 1200 + Math.random() * 600;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), t + Math.min(1.2, dur * 0.35));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f); f.connect(g); g.connect(master);
+    if (verbIn) g.connect(verbIn);
+    o.start(t); o.stop(t + dur + 0.15);
+  }
+  function thump(){
+    const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
+    o.type = "sine";
+    o.frequency.setValueAtTime(120, t);
+    o.frequency.exponentialRampToValueAtTime(32, t + 0.32);
+    g.gain.setValueAtTime(0.34, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 0.55);
+  }
+  function tick(){
+    if (!cur || !ctx) return;
+    const th = THEMES[cur], spb = 60 / th.bpm, bar = beat % 4, chord = th.prog[Math.floor(beat / 4) % th.prog.length];
+    if (bar === 0) {
+      chord.forEach((iv, i) => voice(th.root + iv, spb * 4.4, th.wave, th.gain * (i ? 0.6 : 1), i * 4 - 4));
+      voice(th.root - 12, spb * 4.6, "sine", th.gain * 1.1, 0);
+    }
+    if (th.drums && (bar === 0 || bar === 2)) thump();
+    if (Math.random() < th.mel) {
+      const oct = 24 + (Math.random() < 0.3 ? 12 : 0);
+      voice(th.root + oct + SCALE[Math.floor(Math.random() * SCALE.length)], spb * (1 + Math.random() * 2), "triangle", th.gain * 0.45, 0);
+    }
+    beat++;
+    timer = setTimeout(tick, spb * 1000);
+  }
+  function stopGenerated(){ if (timer) { clearTimeout(timer); timer = null; } }
+  function stopFile(){ if (audioEl) { try { audioEl.pause(); } catch(e){} audioEl = null; } }
+
+  function tryFile(name){
+    return new Promise(res => {
+      let a;
+      try { a = new Audio("music/" + name + ".mp3"); } catch(e) { return res(null); }
+      a.loop = true;
+      a.preload = "auto";
+      a.volume = S.settings.musicVol;
+      let done = false;
+      // loadedmetadata fires as soon as the file is found and decodable, which
+      // for a 9MB track is far sooner than canplaythrough would be.
+      const ok = () => { if (!done) { done = true; res(a); } };
+      const no = () => { if (!done) { done = true; res(null); } };
+      a.addEventListener("loadedmetadata", ok, { once: true });
+      a.addEventListener("canplay", ok, { once: true });
+      a.addEventListener("error", no, { once: true });
+      setTimeout(no, 4000);
+      try { a.load(); } catch(e) { no(); }
+    });
+  }
+
+  return {
+    play: function(name){
+      if (!S.settings.music) return;
+      if (cur === name && (timer || audioEl)) return;
+      cur = name; beat = 0;
+      stopGenerated(); stopFile();
+      if (!init()) return;
+      if (ctx.state === "suspended") { try { ctx.resume(); } catch(e){} }
+      if (useFiles === false) { tick(); return; }
+      tryFile(name).then(a => {
+        if (cur !== name) return;
+        if (a) { useFiles = true; audioEl = a; a.play().catch(() => { audioEl = null; tick(); }); }
+        else { if (useFiles === null) useFiles = false; tick(); }
+      });
+    },
+    stop: function(){ cur = null; stopGenerated(); stopFile(); },
+    source: function(){
+      if (!cur) return "not playing";
+      if (audioEl) return "your MP3s";
+      if (useFiles === false) return "generated score (no MP3s found)";
+      return "starting…";
+    },
+    vol: function(v){
+      if (master) master.gain.value = v;
+      if (audioEl) audioEl.volume = v;
+    },
+    sting: function(){
+      if (!S.settings.music || !init()) return;
+      [0, 4, 7, 12].forEach((iv, i) => setTimeout(() => voice(57 + iv, 1.4, "triangle", 0.13, 0), i * 120));
+    }
+  };
+})();
+
+/* ---------------- battle moves ---------------- */
+const MOVES = {
+  godzilla: ["Tail Sweep","Claw Rake","Body Slam","Dorsal Charge","Jaw Lock","Stomp","Shoulder Ram","Spine Flare","Tail Whip","Head Butt"],
+  kong:     ["Left Hook","Uppercut","Axe Swing","Ground Pound","Grapple Throw","Overhead Smash","Rib Crusher","Double Fist","Shoulder Barge","Haymaker"]
+};
+const FINISHER = {
+  godzilla: { name:"ATOMIC BREATH", line:"The dorsal plates run blue, then white, and everything in front of him stops existing." },
+  kong:     { name:"AXE STRIKE",    line:"He plants both feet, brings the axe over the top, and does not miss." }
+};
+
+/* ---------------- addressing ---------------- */
+function nodeId(ci, si, li){ return CONTENT[ci].id + "." + si + "." + li; }
+function bossIndex(ci, si){ return CONTENT[ci].stages[si].levels.length; }
+function allNodes(ci, si){ const n = []; for (let i = 0; i <= bossIndex(ci, si); i++) n.push(i); return n; }
+function isCleared(ci, si, li){ return !!S.cleared[nodeId(ci, si, li)]; }
+function stageComplete(ci, si){ return allNodes(ci, si).every(li => isCleared(ci, si, li)); }
+function nodeUnlocked(ci, si, li){
+  if (si === 0 && li === 0) return true;
+  if (li > 0) return isCleared(ci, si, li - 1);
+  return stageComplete(ci, si - 1);
+}
+function campaignProgress(ci){
+  let done = 0, total = 0;
+  CONTENT[ci].stages.forEach((_, si) => allNodes(ci, si).forEach(li => { total++; if (isCleared(ci, si, li)) done++; }));
+  return { done: done, total: total, pct: total ? Math.round(done / total * 100) : 0 };
+}
+function chapterNumber(ci, si, li){
+  let n = 0;
+  for (let c = 0; c <= ci; c++) {
+    for (let s = 0; s < CONTENT[c].stages.length; s++) {
+      const max = bossIndex(c, s);
+      for (let l = 0; l <= max; l++) {
+        n++;
+        if (c === ci && s === si && l === li) return n;
+      }
+    }
+  }
+  return n;
+}
+
+/* ---------------- adaptive ordering ---------------- */
+function weakKeys(n){
+  const scored = [];
+  for (const k in S.keyStats) {
+    const s = S.keyStats[k];
+    if (s[0] + s[1] >= 8) scored.push([k, s[1] / (s[0] + s[1])]);
+  }
+  scored.sort((a, b) => b[1] - a[1]);
+  return scored.filter(x => x[1] > 0.06).slice(0, n).map(x => x[0]);
+}
+function adaptOrder(words){
+  const weak = weakKeys(3);
+  if (!weak.length) return words.slice();
+  const score = w => weak.reduce((n, k) => n + (w.toLowerCase().split(k).length - 1), 0);
+  return words.slice().sort((a, b) => score(b) - score(a));
+}
+function recordKey(ch, hit){
+  const k = baseKey(ch); if (!k) return;
+  if (!S.keyStats[k]) S.keyStats[k] = [0, 0];
+  S.keyStats[k][hit ? 0 : 1]++;
+}
+function overallAccuracy(){
+  let h = 0, m = 0;
+  for (const k in S.keyStats) { h += S.keyStats[k][0]; m += S.keyStats[k][1]; }
+  return h + m ? Math.round(h / (h + m) * 100) : 100;
+}
+
+/* ---------------- session ---------------- */
+const SESSION_GOAL_MS = 10 * 60 * 1000;
+const sessionStart = Date.now();
+let sessionOffered = false;
+
+/* ---------------- render helpers ---------------- */
+const root = document.getElementById("screens");
+const capture = document.getElementById("capture");
+function show(html){ root.innerHTML = html; window.scrollTo(0, 0); }
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+function on(id, fn){ const e = el(id); if (e) e.addEventListener("click", fn); }
+
+/* =========================================================================
+   SCREEN: MAP
+   ========================================================================= */
+function screenMap(){
+  T = null;
+  MUSIC.play("explore");
+  const cards = CONTENT.map((c, ci) => {
+    const p = campaignProgress(ci);
+    const hero = TITANS[c.hero];
+    return '<button class="camp" data-ci="' + ci + '">' +
+      stageArt(CONTENT[ci].stages[0].scene, hero.rig, hero.color, "short") +
+      '<div class="capsule">' +
+        '<div class="cname">' + esc(c.name) + '</div>' +
+        '<div class="cdesc">' + esc(c.blurb) + '</div>' +
+        '<div class="cmeta">' + p.done + ' / ' + p.total + ' complete</div>' +
+        '<div class="bar"><i style="width:' + p.pct + '%"></i></div>' +
+      '</div></button>';
+  }).join("");
+  show('<div class="screen">' +
+    '<div><span class="eyebrow">Choose your storyline</span><h2 class="title">Four Ways In</h2></div>' +
+    '<p class="lede">Play them in any order you like. Each one teaches different keys, each one ends with a titan, and each exercise you finish gives you the next chapter of the story.</p>' +
+    '<div class="tut-cta"><p>' +
+      (S.tutorialDone ? "Want a reminder of how everything works?" : "First time here? Take the walkthrough — it shows you every button and every screen in about a minute.") +
+      '</p><button class="' + (S.tutorialDone ? "" : "primary") + '" id="howto">▶ How to play</button></div>' +
+    '<div class="campaigns">' + cards + '</div>' +
+    '<div class="panel"><div class="row" style="gap:1.8rem">' +
+      '<div class="bigstat"><b>' + Object.keys(S.read).length + '</b><span>Chapters read</span></div>' +
+      '<div class="bigstat"><b>' + Object.keys(S.cards).length + '</b><span>Dossiers found</span></div>' +
+      '<div class="bigstat"><b>' + overallAccuracy() + '%</b><span>Accuracy</span></div>' +
+    '</div></div>' +
+    '<div class="sitefoot">' +
+      'Music — <em>Descent</em>, <em>Song of the Forge</em>, <em>Dragon\'s Lullaby</em> and <em>Simulacra</em> by ' +
+      '<a href="https://www.scottbuckley.com.au" target="_blank" rel="noopener">Scott Buckley</a>, used under ' +
+      '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. ' +
+      'Where those tracks are unavailable the game generates its own score.<br>' +
+      'A non-commercial fan project made for one nine-year-old. Godzilla, Kong and the other Titans are the property of Toho Co., Ltd. and Legendary Entertainment, and this is not affiliated with or endorsed by either.' +
+    '</div></div>');
+  on("howto", e => { e.stopPropagation(); TUTORIAL.start(); });
+  root.querySelectorAll(".camp").forEach(b => b.addEventListener("click", () => screenCampaign(+b.dataset.ci)));
+}
+
+function screenCampaign(ci){
+  T = null;
+  MUSIC.play("explore");
+  const c = CONTENT[ci];
+  const stages = c.stages.map((st, si) => {
+    const nodes = st.levels.map((lv, li) => {
+      const cl = isCleared(ci, si, li), un = nodeUnlocked(ci, si, li);
+      return '<button class="node ' + (cl ? "cleared " : "") + (un ? "" : "locked") + '" ' +
+        (un ? 'data-si="' + si + '" data-li="' + li + '"' : "disabled") + '>' + esc(lv.name) + '</button>';
+    }).join("");
+    const bi = bossIndex(ci, si), bcl = isCleared(ci, si, bi), bun = nodeUnlocked(ci, si, bi);
+    const bossBtn = '<button class="node boss ' + (bcl ? "cleared " : "") + (bun ? "" : "locked") + '" ' +
+      (bun ? 'data-si="' + si + '" data-li="' + bi + '"' : "disabled") + '>⚔ ' + esc(TITANS[st.boss].name) + '</button>';
+    return '<div class="stage' + (stageComplete(ci, si) ? " done" : "") + '">' +
+      '<div class="num">' + (si + 1) + '</div><div>' +
+      '<div class="sname">' + esc(st.name) + '</div>' +
+      '<div class="skeys">' + esc(st.keys) + '</div>' +
+      '<div class="nodes">' + nodes + bossBtn + '</div></div></div>';
+  }).join("");
+  const hero = TITANS[c.hero];
+  show('<div class="screen">' +
+    stageArt(c.stages[0].scene, hero.rig, hero.color, "") +
+    '<div><span class="eyebrow">Storyline ' + (ci + 1) + ' of ' + CONTENT.length + '</span>' +
+    '<h2 class="title">' + esc(c.name) + '</h2></div>' +
+    '<p class="lede">' + esc(c.blurb) + '</p>' +
+    '<div class="stages">' + stages + '</div>' +
+    '<div class="row"><button id="back">← All storylines</button></div></div>');
+  on("back", screenMap);
+  root.querySelectorAll(".node:not(.locked)").forEach(b => b.addEventListener("click", () => {
+    const si = +b.dataset.si, li = +b.dataset.li;
+    if (li === bossIndex(ci, si)) startBoss(ci, si); else startLevel(ci, si, li);
+  }));
+}
+
+/* =========================================================================
+   TYPING ENGINE
+   ========================================================================= */
+let T = null;
+function makeRun(prompts, opts){
+  return Object.assign({ prompts: prompts, i: 0, c: 0, bad: false, hits: 0, misses: 0,
+    started: null, hideText: false, onChar: null, onWord: null, onDone: null }, opts || {});
+}
+function currentPrompt(){ return T.prompts[T.i]; }
+function targetChar(){ const p = currentPrompt(); return p ? p[T.c] : null; }
+
+function renderPrompt(){
+  const p = currentPrompt(); if (!p) return "";
+  return p.split("").map((ch, i) => {
+    const cls = "ch" + (i < T.c ? " done" : "") + (i === T.c ? " now" + (T.bad ? " bad" : "") : "");
+    let shown = ch === " " ? "␣" : ch;
+    if (T.hideText && i >= T.c) shown = ch === " " ? "␣" : "•";
+    return '<span class="' + cls + '">' + esc(shown) + "</span>";
+  }).join("");
+}
+function renderKeyboard(){
+  if (!S.settings.keyboard) return "";
+  const tgt = targetChar(), tk = baseKey(tgt), shift = tgt !== null && needsShift(tgt);
+  const rows = KEYROWS.map(row => '<div class="krow">' + row.map(k =>
+    '<div class="key' + (k === " " ? " space" : "") + (k === tk ? " target" + (T.bad ? " bad" : "") : "") +
+    '" data-f="' + (FINGER[k] || "th") + '">' + esc(k === " " ? "space" : k.toUpperCase()) + "</div>").join("") + "</div>").join("");
+  return '<div class="kbd">' + rows +
+    '<div class="krow"><div class="key wide' + (shift ? " target" : "") + '" data-f="lp">shift</div>' +
+    '<div class="key wide' + (shift ? " target" : "") + '" data-f="rp">shift</div></div></div>';
+}
+function fingerHint(){
+  const tgt = targetChar(); if (tgt === null) return "";
+  const f = FINGER[baseKey(tgt)];
+  return (FINGER_NAME[f] || "thumb") + " → " + (tgt === " " ? "space bar" : '"' + tgt + '"') + (needsShift(tgt) ? " (hold Shift)" : "");
+}
+function paint(){
+  if (!T) return;
+  const p = el("promptLine"); if (p) p.innerHTML = renderPrompt();
+  const k = el("kbdSlot"); if (k) k.innerHTML = renderKeyboard();
+  const f = el("fingerHint"); if (f) f.textContent = fingerHint();
+  const d = el("progdots");
+  if (d) d.innerHTML = T.prompts.map((_, i) => '<i class="' + (i < T.i ? "on" : i === T.i ? "now" : "") + '"></i>').join("");
+  const c = el("countReadout"); if (c) c.textContent = (Math.min(T.i + 1, T.prompts.length)) + " of " + T.prompts.length;
+}
+function accuracy(){ return T.hits + T.misses ? Math.round(T.hits / (T.hits + T.misses) * 100) : 100; }
+function focusCapture(){ try { capture.focus({ preventScroll: true }); } catch(e) {} }
+
+function handleChar(ch){
+  const tgt = targetChar(); if (tgt === null) return;
+  if (ch === tgt) {
+    recordKey(ch, true); T.hits++; T.bad = false; T.c++;
+    if (T.started === null) T.started = Date.now();
+    SFX.ok();
+    if (T.onChar) T.onChar(true);
+    if (!T) return;
+    if (T.c >= currentPrompt().length) {
+      T.i++; T.c = 0;
+      SFX.word();
+      if (T.onWord) T.onWord();
+      if (!T) return;
+      if (T.i >= T.prompts.length) { if (T.onDone) T.onDone(); return; }
+      if (T.hideText) setTimeout(() => { if (T) speak(currentPrompt()); }, 280);
+    }
+  } else {
+    recordKey(tgt, false); T.misses++; T.bad = true;
+    SFX.miss();
+    if (T.onChar) T.onChar(false);
+    if (!T) return;
+  }
+  paint();
+}
+document.addEventListener("keydown", e => {
+  if (!T) return;
+  if (e.key === "Backspace") { e.preventDefault(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1) return;
+  e.preventDefault();
+  handleChar(e.key);
+});
+document.addEventListener("click", () => { if (T) focusCapture(); });
+
+/* =========================================================================
+   SCREEN: PRACTICE LEVEL
+   ========================================================================= */
+function startLevel(ci, si, li){
+  const c = CONTENT[ci], st = c.stages[si], lv = st.levels[li];
+  const words = adaptOrder(lv.words), isEcho = lv.type === "echo";
+  const hero = TITANS[c.hero];
+  MUSIC.play("explore");
+
+  show('<div class="screen stagewrap">' +
+    stageArt(st.scene, hero.rig, hero.color, "short") +
+    '<div><span class="eyebrow">' + esc(c.name) + ' · Stage ' + (si + 1) + '</span>' +
+    '<h2 class="title">' + esc(st.name) + ' — ' + esc(lv.name) + '</h2></div>' +
+    (li === 0 ? '<div class="callout atomic"><span class="speaker">Monarch Briefing</span>' + esc(st.brief) + "</div>" : "") +
+    (isEcho ? '<div class="callout"><span class="speaker">Dictation</span>Listen, then type what you hear. The letters stay hidden until you get them right. Press the button to hear it again as many times as you want.</div>' : "") +
+    '<div class="hud"><span class="readout" id="countReadout"></span><div class="progdots" id="progdots"></div>' +
+    '<span class="spacer"></span>' + (isEcho ? '<button id="again">🔊 Hear it again</button>' : "") +
+    '<button id="quit" class="ghost">Back to map</button></div>' +
+    '<div class="typebox"><div class="prompt" id="promptLine"></div><div class="fingerhint" id="fingerHint"></div></div>' +
+    '<div id="kbdSlot"></div>' +
+    '<p class="hint">Backspace is switched off on purpose. If you press a wrong key nothing happens at all — just find the right one and carry on.</p></div>');
+
+  T = makeRun(words, { hideText: isEcho, onDone: () => finishLevel(ci, si, li) });
+  paint(); focusCapture();
+  if (isEcho) {
+    setTimeout(() => { if (T) speak(words[0]); }, 420);
+    on("again", e => { e.stopPropagation(); speak(currentPrompt()); focusCapture(); });
+  }
+  on("quit", () => { T = null; screenCampaign(ci); });
+}
+
+function finishLevel(ci, si, li){
+  const acc = accuracy();
+  S.cleared[nodeId(ci, si, li)] = { acc: acc, chars: T.hits, ms: T.started ? Date.now() - T.started : 0 };
+  save(); SFX.win();
+  T = null;
+  storyScreen(ci, si, li, acc);
+}
+
+/* =========================================================================
+   SCREEN: STORY CHAPTER — the reward after every exercise
+   ========================================================================= */
+function storyScreen(ci, si, li, acc){
+  const c = CONTENT[ci], st = c.stages[si];
+  const boss = li === bossIndex(ci, si);
+  const lv = boss ? null : st.levels[li];
+  const paras = boss ? st.winStory : lv.story;
+  const title = boss ? TITANS[st.boss].name + " — Down" : lv.title;
+  const chap = chapterNumber(ci, si, li);
+  const art = boss ? TITANS[st.boss] : TITANS[c.hero];
+  S.read[nodeId(ci, si, li)] = true; save();
+  MUSIC.play(boss ? "victory" : "story");
+
+  const nextLi = li + 1;
+  const isBossNext = nextLi === bossIndex(ci, si);
+  const moreStages = si + 1 < c.stages.length;
+  const sessionOver = (Date.now() - sessionStart) > SESSION_GOAL_MS && !sessionOffered;
+  if (sessionOver) sessionOffered = true;
+
+  show('<div class="screen storywrap">' +
+    stageArt(st.scene, art.rig, art.color, "") +
+    '<div class="chapline"><span class="chapno">Chapter ' + chap + '</span>' +
+      '<span class="eyebrow">' + esc(c.name) + '</span></div>' +
+    '<h2 class="title">' + esc(title) + '</h2>' +
+    paras.map((p, i) => '<p class="storytext' + (i === 0 ? " dropcap" : "") + '">' + esc(p) + "</p>").join("") +
+    (boss ? '<div class="callout atomic"><span class="speaker">Dossier recovered</span>' +
+      esc(TITANS[st.boss].name) + " — " + esc(TITANS[st.boss].desig) + ". " + esc(TITANS[st.boss].note) + "</div>" : "") +
+    (acc !== undefined ? '<div class="row" style="gap:2rem"><div class="bigstat"><b>' + acc + '%</b><span>Accuracy that round</span></div>' +
+      '<div class="bigstat"><b>' + Object.keys(S.read).length + '</b><span>Chapters read</span></div></div>' : "") +
+    (sessionOver ? '<div class="callout"><span class="speaker">Monarch</span>That is a full session — really good work. This is a great place to stop for today. If you want one more, go ahead.</div>' : "") +
+    '<div class="row">' +
+      '<button id="readaloud">🔊 Read it to me</button>' +
+      (!boss ? '<button class="primary" id="next">' + (isBossNext ? "⚔ Face " + esc(TITANS[st.boss].name) : "Next exercise →") + "</button>"
+             : (moreStages ? '<button class="primary" id="next">Next stage →</button>' : "")) +
+      '<button id="story" class="ghost">Story so far</button>' +
+      '<button id="map" class="ghost">Map</button>' +
+    "</div></div>");
+
+  on("readaloud", e => { e.stopPropagation(); speak(paras.join(" ")); });
+  on("map", () => screenCampaign(ci));
+  on("story", screenStory);
+  on("next", () => {
+    if (!boss) { if (isBossNext) startBoss(ci, si); else startLevel(ci, si, nextLi); }
+    else startLevel(ci, si + 1, 0);
+  });
+}
+
+/* =========================================================================
+   SCREEN: BOSS BATTLE — animated, and still with no clock anywhere
+   ========================================================================= */
+const MISSES_PER_ATTACK = 5, SHIELDS = 3, CHARGE_MAX = 4, BOSS_HP = 14, FINISHER_DAMAGE = 4;
+
+function battleWords(ci, si){
+  const pool = [];
+  CONTENT[ci].stages[si].levels.forEach(lv => pool.push.apply(pool, lv.words));
+  const uniq = adaptOrder(Array.from(new Set(pool)));
+  const out = [];
+  while (out.length < 24) out.push(uniq[out.length % uniq.length]);
+  return out;
+}
+
+function startBoss(ci, si){
+  const c = CONTENT[ci], st = c.stages[si], t = TITANS[st.boss], hero = TITANS[c.hero];
+  const words = battleWords(ci, si);
+  const moves = MOVES[c.hero] || MOVES.godzilla;
+  const fin = FINISHER[c.hero] || FINISHER.godzilla;
+  let hp = BOSS_HP, shields = SHIELDS, missBuf = 0, charge = 0, wordMisses = 0, over = false;
+  const gid = "b" + (++artSeq);
+  MUSIC.play("battle");
+
+  const arena = S.settings.art
+    ? '<div class="arena-art" id="arena">' +
+      '<svg viewBox="0 0 240 180" preserveAspectRatio="xMidYMax slice">' +
+        sceneSVG(st.scene, gid) +
+        '<g id="heroG">' + titanSVG(hero.rig, hero.color, { scale: 0.62, dx: -4, dy: 62 }) + "</g>" +
+        '<g id="foeG">' + titanSVG(t.rig, t.color, { flip: true, scale: 0.62, dx: 86, dy: 62 }) + "</g>" +
+        '<rect class="beam" id="beam" x="96" y="96" width="70" height="5" rx="2.5" fill="' + hero.color + '"/>' +
+        '<rect class="bigbeam" id="bigbeam" x="92" y="88" width="88" height="14" rx="7" fill="#ffffff" opacity="0"/>' +
+        '<circle class="impact" id="impact" cx="176" cy="98" r="4" fill="none" stroke="' + t.color + '" stroke-width="2"/>' +
+      "</svg>" +
+      '<div class="movebanner"><b id="moveName"></b></div>' +
+      "<div class='flashlayer' id='flash'></div></div>"
+    : '<div class="movebanner" style="position:static;margin:0.2rem 0"><b id="moveName"></b></div>';
+
+  show('<div class="screen stagewrap">' +
+    '<div><span class="eyebrow">' + esc(c.name) + " · Stage " + (si + 1) + ' · Boss</span>' +
+    '<h2 class="title">' + esc(t.name) + "</h2></div>" +
+    '<div class="callout ember"><span class="speaker">Incoming</span>' + esc(st.bossLine) + "</div>" +
+    arena +
+    '<div class="combat">' +
+      '<div class="gauge"><div class="gname">' + esc(hero.name) + "</div>" +
+      '<div class="gsub">' + esc(hero.desig) + "</div>" +
+      '<div class="shields" id="shields"></div>' +
+      '<div class="chargebar" id="chargebar"><i id="chargeFill"></i></div>' +
+      '<div class="gsub" id="chargeLabel">Shields · ' + esc(fin.name) + " charge</div></div>" +
+      '<div class="gauge"><div class="gname">' + esc(t.name) + "</div>" +
+      '<div class="gsub">' + esc(t.desig) + " · " + esc(t.role) + "</div>" +
+      '<div class="hpbar"><i id="hp"></i></div><div class="charge"><i id="charge"></i></div>' +
+      '<div class="gsub">Health · its next attack</div></div>' +
+    "</div>" +
+    '<div class="hud"><span class="readout" id="countReadout"></span><div class="progdots" id="progdots"></div>' +
+    '<span class="spacer"></span><button id="quit" class="ghost">Retreat to map</button></div>' +
+    '<div class="typebox"><div class="prompt" id="promptLine"></div><div class="fingerhint" id="fingerHint"></div></div>' +
+    '<div id="kbdSlot"></div>' +
+    '<p class="hint">Every word you finish is a strike. Finish ' + CHARGE_MAX +
+    " in a row without a single mistake and the next one becomes " + esc(fin.name) +
+    ". There is no clock — take as long as you like, because " + esc(t.name) +
+    " only gets a turn when you miss five keys.</p></div>");
+
+  function ready(){ return charge >= CHARGE_MAX; }
+  function gauges(){
+    el("hp").style.width = Math.max(0, hp / BOSS_HP * 100) + "%";
+    el("charge").style.width = (missBuf / MISSES_PER_ATTACK * 100) + "%";
+    let sh = "";
+    for (let i = 0; i < SHIELDS; i++) sh += '<i class="' + (i < shields ? "" : "gone") + '"></i>';
+    el("shields").innerHTML = sh;
+    const bar = el("chargebar");
+    el("chargeFill").style.width = Math.min(100, charge / CHARGE_MAX * 100) + "%";
+    bar.classList.toggle("full", ready());
+    el("chargeLabel").innerHTML = ready()
+      ? '<span class="readybadge">' + esc(fin.name) + " READY — type the next word</span>"
+      : "Shields · " + esc(fin.name) + " charge " + charge + "/" + CHARGE_MAX;
+  }
+  function fx(id, cls, ms){
+    if (!S.settings.motion) return;
+    const e = el(id); if (!e) return;
+    e.classList.remove(cls); void e.getBoundingClientRect();
+    e.classList.add(cls);
+    setTimeout(() => { if (e) e.classList.remove(cls); }, ms);
+  }
+  function banner(text, isFin){
+    const b = el("moveName"); if (!b) return;
+    b.textContent = text;
+    b.className = "";
+    void b.getBoundingClientRect();
+    b.className = "go" + (isFin ? " fin" : "");
+  }
+  function heroAttacks(){
+    banner(moves[Math.floor(Math.random() * moves.length)], false);
+    fx("heroG", "fx-lunge-r", 420);
+    fx("beam", "fire", 520);
+    setTimeout(() => { fx("foeG", "fx-recoil-r", 380); fx("impact", "go", 520); }, 180);
+  }
+  function finisherAttacks(){
+    banner(fin.name, true);
+    fx("heroG", "fx-lunge-r", 420);
+    fx("bigbeam", "fire", 1150);
+    tone(60, 900, 0.09, "sawtooth");
+    setTimeout(() => tone(180, 700, 0.06, "square"), 120);
+    setTimeout(() => {
+      fx("foeG", "fx-recoil-r", 380);
+      fx("arena", "shaking", 420);
+      fx("flash", "go", 380);
+      fx("impact", "go", 520);
+    }, 380);
+  }
+  function foeAttacks(){
+    fx("foeG", "fx-lunge-l", 420);
+    setTimeout(() => { fx("heroG", "fx-recoil-l", 380); fx("arena", "shaking", 420); fx("flash", "go", 380); }, 150);
+  }
+  function finish(){
+    if (over) return;
+    over = true; T = null;
+    setTimeout(() => bossVictory(ci, si), 700);
+  }
+
+  T = makeRun(words, {
+    onWord: () => {
+      const clean = wordMisses === 0;
+      if (ready()) {
+        hp -= FINISHER_DAMAGE; charge = 0;
+        SFX.hit(); finisherAttacks();
+      } else {
+        hp -= 1;
+        if (clean) charge++;
+        SFX.hit(); heroAttacks();
+      }
+      wordMisses = 0;
+      gauges();
+      if (hp <= 0) finish();
+    },
+    onChar: ok => {
+      if (ok) return;
+      wordMisses++; missBuf++;
+      if (missBuf >= MISSES_PER_ATTACK) {
+        missBuf = 0; shields--; charge = 0;
+        SFX.hurt(); foeAttacks();
+        if (shields <= 0) { over = true; T = null; setTimeout(() => regroup(ci, si), 700); return; }
+      }
+      gauges();
+    },
+    onDone: finish
+  });
+  paint(); gauges(); focusCapture();
+  on("quit", () => { T = null; MUSIC.play("explore"); screenCampaign(ci); });
+}
+
+function regroup(ci, si){
+  const st = CONTENT[ci].stages[si], t = TITANS[st.boss];
+  MUSIC.play("story");
+  show('<div class="screen">' +
+    stageArt(st.scene, t.rig, t.color, "short") +
+    '<div><span class="eyebrow">Regroup</span><h2 class="title">Pull back and go again</h2></div>' +
+    '<div class="callout"><span class="speaker">Monarch</span>Shields are down, so we are pulling you out. Nothing is lost — ' + esc(t.name) +
+    " is exactly where you left it, and so is every chapter and every level you have already cleared. Most of Monarch needed three tries at this one.</div>" +
+    '<div class="row"><button class="primary" id="retry">⚔ Try ' + esc(t.name) + " again</button>" +
+    '<button id="practice">Practise the words first</button>' +
+    '<button id="map" class="ghost">Back to map</button></div></div>');
+  on("retry", () => startBoss(ci, si));
+  on("practice", () => startLevel(ci, si, bossIndex(ci, si) - 1));
+  on("map", () => screenCampaign(ci));
+}
+
+function bossVictory(ci, si){
+  const st = CONTENT[ci].stages[si];
+  S.cleared[nodeId(ci, si, bossIndex(ci, si))] = { acc: 100, chars: 0, ms: 0 };
+  S.cards[st.boss] = true;
+  save(); SFX.win();
+  storyScreen(ci, si, bossIndex(ci, si), undefined);
+}
+
+/* =========================================================================
+   SCREEN: STORY SO FAR
+   ========================================================================= */
+function screenStory(){
+  T = null;
+  let out = "", n = 0, any = false;
+  CONTENT.forEach((c, ci) => {
+    let block = "";
+    c.stages.forEach((st, si) => {
+      st.levels.forEach((lv, li) => {
+        n++;
+        if (!S.read[nodeId(ci, si, li)]) return;
+        any = true;
+        block += '<div class="panel"><span class="chapno">Chapter ' + n + "</span>" +
+          '<h3 class="sub">' + esc(lv.title) + "</h3>" +
+          lv.story.map(p => '<p class="storytext" style="font-size:1rem">' + esc(p) + "</p>").join("") + "</div>";
+      });
+      const bi = bossIndex(ci, si); n++;
+      if (S.read[nodeId(ci, si, bi)]) {
+        any = true;
+        block += '<div class="panel" style="border-left:3px solid var(--ember)"><span class="chapno">Chapter ' + n + "</span>" +
+          '<h3 class="sub">' + esc(TITANS[st.boss].name) + " — Down</h3>" +
+          st.winStory.map(p => '<p class="storytext" style="font-size:1rem">' + esc(p) + "</p>").join("") + "</div>";
+      }
+    });
+    if (block) out += '<div><span class="eyebrow">' + esc(c.name) + "</span></div>" + block;
+  });
+  show('<div class="screen">' +
+    '<div><span class="eyebrow">Everything you have unlocked</span><h2 class="title">The Story So Far</h2></div>' +
+    (any ? '<p class="lede">' + Object.keys(S.read).length + " chapters of " + n + ". Finish an exercise to unlock the next one.</p>" + out
+         : '<p class="lede">No chapters yet. Finish your first exercise and the story starts.</p>') +
+    "</div>");
+}
+
+/* =========================================================================
+   SCREEN: DOSSIERS
+   ========================================================================= */
+function screenCards(){
+  T = null;
+  const starters = ["godzilla", "kong", "mothra"];
+  const ids = Object.keys(TITANS);
+  const cards = ids.map(id => {
+    const t = TITANS[id], got = !!S.cards[id] || starters.indexOf(id) >= 0;
+    return '<div class="dossier' + (got ? "" : " sealed") + '">' +
+      (S.settings.art ? '<div class="stage-art short" style="border:0;border-bottom:1px solid var(--edge);border-radius:0">' +
+        '<svg viewBox="0 0 240 180" preserveAspectRatio="xMidYMax slice">' + sceneSVG(t.scene, "d" + id) +
+        titanSVG(t.rig, got ? t.color : "#3a4652", { scale: 0.8, dx: 24, dy: 26 }) + "</svg></div>" : "") +
+      '<div class="dbody"><div class="dname">' + (got ? esc(t.name) : "Classified") + "</div>" +
+      '<div class="drow">' + (got ? esc(t.desig) + " · " + esc(t.role) : "Dossier sealed") + "</div>" +
+      '<div class="dnote">' + (got ? esc(t.note) : "Beat this titan to unlock its Monarch file.") + "</div></div></div>";
+  }).join("");
+  const found = ids.filter(id => S.cards[id] || starters.indexOf(id) >= 0).length;
+  show('<div class="screen">' +
+    '<div><span class="eyebrow">Monarch archive</span><h2 class="title">Titan Dossiers</h2></div>' +
+    '<p class="lede">One file for every titan you have met. ' + found + " of " + ids.length + " recovered.</p>" +
+    '<div class="cards">' + cards + "</div></div>");
+}
+
+/* =========================================================================
+   SCREEN: SETTINGS
+   ========================================================================= */
+function screenSettings(){
+  T = null;
+  const s = S.settings;
+  const tog = (id, label, onv) => '<div class="setrow"><label>' + label + "</label>" +
+    '<button class="toggle" id="' + id + '" aria-pressed="' + (onv ? "true" : "false") + '">' + (onv ? "On" : "Off") + "</button></div>";
+  show('<div class="screen">' +
+    '<div><span class="eyebrow">Comfort</span><h2 class="title">Settings</h2></div>' +
+    '<p class="lede">Change these any time — none of it affects progress. If the screen is too busy today, turn the pictures or the animation off and everything still works.</p>' +
+    '<div class="panel"><div class="setgrid"><div>' +
+      tog("tArt", "Pictures and scenery", s.art) +
+      tog("tMotion", "Animation", s.motion) +
+      tog("tSound", "Sound effects", s.sound) +
+      tog("tMusic", "Music", s.music) +
+      '<div class="setrow"><label>Music volume</label><span class="row">' +
+      '<button id="volDown">−</button><span class="mono" style="min-width:2.6rem;text-align:center">' +
+      Math.round(s.musicVol * 100) + "%</span><button id='volUp'>+</button></span></div>" +
+    "</div><div>" +
+      tog("tSpeech", "Read words out loud", s.speech) +
+      tog("tKeyboard", "Show the keyboard guide", s.keyboard) +
+      tog("tContrast", "High contrast", s.contrast === "high") +
+      '<div class="setrow"><label>Text size</label><span class="row">' +
+      '<button id="sizeDown">−</button><span class="mono" id="sizeVal" style="min-width:2.6rem;text-align:center">' +
+      s.typeSize.toFixed(1) + "</span><button id='sizeUp'>+</button></span></div>" +
+    "</div></div>" +
+    '<p class="lede" style="font-size:0.85rem">Now playing: <span class="mono">' + esc(MUSIC.source()) + "</span>. " +
+    'The game looks for <span class="mono">music/explore.mp3</span>, <span class="mono">battle.mp3</span>, <span class="mono">story.mp3</span> and <span class="mono">victory.mp3</span> beside this file and uses them if they are there. ' +
+    "Otherwise it generates its own score. MP3s only play when the game is opened from your own computer — the web version always uses the generated score.</p>" +
+    '<p class="lede" style="font-size:0.85rem">Music: <strong>Descent</strong>, <strong>Song of the Forge</strong>, <strong>Dragon\'s Lullaby</strong> and <strong>Simulacra</strong> by Scott Buckley (scottbuckley.com.au), used under CC BY 4.0.</p></div>' +
+    '<div class="panel"><span class="eyebrow">For grown-ups</span><h3 class="sub">Progress report</h3>' +
+    growUpBlock() + '<div class="row"><button id="reset" class="ghost">Erase all progress</button></div></div></div>');
+
+  const flip = (id, get, set) => on(id, () => { set(!get()); save(); applySettings(); screenSettings(); });
+  flip("tArt", () => s.art, v => s.art = v);
+  flip("tMotion", () => s.motion, v => s.motion = v);
+  flip("tSound", () => s.sound, v => s.sound = v);
+  flip("tSpeech", () => s.speech, v => s.speech = v);
+  flip("tKeyboard", () => s.keyboard, v => s.keyboard = v);
+  on("tMusic", () => {
+    s.music = !s.music; save();
+    if (s.music) MUSIC.play("explore"); else MUSIC.stop();
+    screenSettings();
+  });
+  on("volUp", () => { s.musicVol = Math.min(1, +(s.musicVol + 0.1).toFixed(2)); MUSIC.vol(s.musicVol); save(); screenSettings(); });
+  on("volDown", () => { s.musicVol = Math.max(0, +(s.musicVol - 0.1).toFixed(2)); MUSIC.vol(s.musicVol); save(); screenSettings(); });
+  on("tContrast", () => { s.contrast = s.contrast === "high" ? "normal" : "high"; save(); applySettings(); screenSettings(); });
+  on("sizeUp", () => { s.typeSize = Math.min(3.4, s.typeSize + 0.2); save(); applySettings(); screenSettings(); });
+  on("sizeDown", () => { s.typeSize = Math.max(1.1, s.typeSize - 0.2); save(); applySettings(); screenSettings(); });
+  on("reset", () => {
+    if (confirm("Erase all progress, chapters, dossiers and stats? This cannot be undone.")) {
+      S = seedDefaults(); save(); applySettings(); screenMap();
+    }
+  });
+}
+
+function growUpBlock(){
+  const rows = Object.keys(S.keyStats).map(k => {
+    const st = S.keyStats[k], total = st[0] + st[1];
+    return { k: k, total: total, acc: total ? st[0] / total : 1 };
+  }).filter(r => r.total >= 5).sort((a, b) => a.acc - b.acc).slice(0, 8);
+  const cleared = Object.keys(S.cleared).map(k => S.cleared[k]);
+  const chars = cleared.reduce((n, r) => n + (r.chars || 0), 0);
+  const ms = cleared.reduce((n, r) => n + (r.ms || 0), 0);
+  const wpm = ms > 0 ? Math.round((chars / 5) / (ms / 60000)) : 0;
+  const table = rows.length
+    ? '<div class="scroller"><table class="stats"><thead><tr><th>Key</th><th>Attempts</th><th>Accuracy</th></tr></thead><tbody>' +
+      rows.map(r => "<tr><td>" + (r.k === " " ? "space" : r.k.toUpperCase()) + "</td><td>" + r.total + "</td><td>" +
+        Math.round(r.acc * 100) + "%</td></tr>").join("") + "</tbody></table></div>"
+    : '<p class="lede">Not enough practice yet to show per-key accuracy.</p>';
+  return '<div class="row" style="gap:2rem;margin-bottom:0.4rem">' +
+    '<div class="bigstat"><b>' + overallAccuracy() + '%</b><span>Overall accuracy</span></div>' +
+    '<div class="bigstat"><b>' + wpm + '</b><span>Words per minute</span></div>' +
+    '<div class="bigstat"><b>' + Object.keys(S.read).length + '</b><span>Chapters read</span></div></div>' +
+    '<p class="lede" style="font-size:0.88rem">Speed is deliberately never shown to him — the game scores accuracy only. The weakest keys below are quietly moved to the front of the next word lists he plays, and he is never told which they are.</p>' + table;
+}
+
+/* =========================================================================
+   TUTORIAL — a spotlight walkthrough of every button and every screen
+   ========================================================================= */
+const TUTORIAL = (function(){
+  let i = 0, veil = null, hole = null, box = null, active = false;
+
+  const STEPS = [
+    { title: "Welcome to Titan Protocol",
+      text: "This is a typing game, and it is also a story about giant monsters. Every exercise you finish unlocks the next chapter. Let's walk through the whole thing — it takes about a minute.",
+      setup: () => screenMap() },
+    { sel: "#btnMap", title: "The Map button",
+      text: "This always brings you back to the front page, no matter where you are or what you are in the middle of. Nothing is ever lost by pressing it." },
+    { sel: "#btnStory", title: "Story so far",
+      text: "Every chapter you have unlocked is saved here so you can read the whole story again from the beginning, any time." },
+    { sel: "#btnCards", title: "Dossiers",
+      text: "A file card for every titan. They start out Classified, and each one unlocks when you beat that titan in a boss fight." },
+    { sel: "#btnSettings", title: "Settings",
+      text: "Sound, music, pictures, animation, text size and high contrast — all switchable. If the screen feels like too much on a given day, turn things off here and everything still works." },
+    { sel: ".campaigns .camp", title: "Pick a storyline",
+      text: "There are four separate stories. You can play them in any order. Each one teaches different keys and ends with a different titan.",
+      setup: () => screenMap() },
+    { sel: ".stages .stage", title: "Stages and exercises",
+      text: "Each storyline is made of stages, and each stage teaches you two new keys. The small buttons are the exercises. Do them left to right.",
+      setup: () => screenCampaign(0) },
+    { sel: ".stages .stage .node.boss", title: "The boss fight",
+      text: "The red one at the end of every stage is a titan. It unlocks once you have finished the three exercises in front of it.",
+      setup: () => screenCampaign(0) },
+    { sel: "#promptLine", title: "The word you are typing",
+      text: "Type it one letter at a time. Letters you have already got right turn green, and the letter you are on has a yellow line under it.",
+      setup: () => { startLevel(0, 0, 0); T = null; } },
+    { sel: "#kbdSlot", title: "The keyboard guide",
+      text: "The key you need next lights up yellow, and the coloured strip under each key tells you which finger it belongs to. Try not to look down at the real keyboard — look here instead." },
+    { sel: "#fingerHint", title: "Which finger",
+      text: "And if you are still not sure, this line spells it out in words." },
+    { sel: "#progdots", title: "How far through you are",
+      text: "This is the only progress bar in the game, and it counts words, not seconds. There is no clock anywhere. Take as long as you want on every single word." },
+    { sel: ".typebox", title: "Wrong keys do nothing",
+      text: "Backspace is switched off on purpose, and if you press a wrong key, absolutely nothing happens — no buzzer, no lost life, no going back. Just find the right key and carry on." },
+    { sel: "#arena", title: "Boss fights",
+      text: "In a boss fight, every word you finish is a strike — a punch, a tail sweep, an axe swing. Watch the top of the picture for the name of the move you just landed.",
+      setup: () => { startBoss(0, 0); T = null; } },
+    { sel: "#chargebar", title: "Charging the finisher",
+      text: "Finish four words in a row with no mistakes at all and this bar fills up. When it does, the very next word becomes ATOMIC BREATH — one enormous hit that takes off a quarter of the titan's health." },
+    { sel: "#shields", title: "Your shields",
+      text: "You have three. The titan only gets a turn when you miss five keys, and it takes one shield when it does. Run out and you simply try again with everything you have already done still saved." },
+    { title: "And then you read",
+      text: "Every time you finish an exercise or beat a titan, you get the next chapter of the story to read, with a button that reads it out loud to you. That is the whole game. Go and wake something up.",
+      setup: () => screenMap() }
+  ];
+
+  function build(){
+    veil = document.createElement("div"); veil.className = "tut-veil";
+    hole = document.createElement("div"); hole.className = "tut-hole";
+    box  = document.createElement("div"); box.className = "tut-box";
+    document.body.appendChild(veil);
+    document.body.appendChild(hole);
+    document.body.appendChild(box);
+    box.addEventListener("click", e => {
+      const a = e.target.getAttribute && e.target.getAttribute("data-tut");
+      if (!a) return;
+      e.stopPropagation();
+      if (a === "next") go(i + 1);
+      else if (a === "back") go(i - 1);
+      else stop();
+    });
+  }
+
+  function position(){
+    const s = STEPS[i];
+    const t = s.sel ? document.querySelector(s.sel) : null;
+    box.innerHTML =
+      '<span class="tut-step">Step ' + (i + 1) + " of " + STEPS.length + "</span>" +
+      "<h4>" + esc(s.title) + "</h4><p>" + esc(s.text) + "</p>" +
+      '<div class="tut-nav">' +
+        (i > 0 ? '<button data-tut="back" class="ghost">← Back</button>' : "") +
+        '<button data-tut="stop" class="ghost">Skip</button>' +
+        '<button data-tut="next" class="primary">' + (i === STEPS.length - 1 ? "Let's go" : "Next →") + "</button>" +
+      "</div>";
+    const bw = Math.min(340, window.innerWidth - 24);
+    box.style.width = bw + "px";
+    if (t) {
+      veil.style.display = "none";
+      hole.style.display = "block";
+      const r = t.getBoundingClientRect();
+      hole.style.left = (r.left - 6) + "px";
+      hole.style.top = (r.top - 6) + "px";
+      hole.style.width = (r.width + 12) + "px";
+      hole.style.height = (r.height + 12) + "px";
+      const bh = box.offsetHeight || 190;
+      let top = r.bottom + 14;
+      if (top + bh > window.innerHeight - 10) top = Math.max(10, r.top - bh - 14);
+      let left = r.left + r.width / 2 - bw / 2;
+      left = Math.max(10, Math.min(left, window.innerWidth - bw - 10));
+      box.style.top = top + "px";
+      box.style.left = left + "px";
+    } else {
+      hole.style.display = "none";
+      veil.style.display = "block";
+      const bh = box.offsetHeight || 190;
+      box.style.top = Math.max(12, window.innerHeight / 2 - bh / 2) + "px";
+      box.style.left = Math.max(10, window.innerWidth / 2 - bw / 2) + "px";
+    }
+  }
+
+  function go(n){
+    if (n < 0) return;
+    if (n >= STEPS.length) return stop();
+    i = n;
+    const s = STEPS[i];
+    if (s.setup) s.setup();
+    T = null;
+    const t = s.sel ? document.querySelector(s.sel) : null;
+    if (t) { try { t.scrollIntoView({ block: "center" }); } catch(e) { t.scrollIntoView(); } }
+    setTimeout(position, 80);
+  }
+
+  function stop(){
+    active = false;
+    [veil, hole, box].forEach(e => { if (e && e.parentNode) e.parentNode.removeChild(e); });
+    veil = hole = box = null;
+    S.tutorialDone = true; save();
+    T = null;
+    MUSIC.play("explore");
+    screenMap();
+  }
+
+  return {
+    start: function(){
+      if (active) return;
+      active = true; i = 0;
+      build();
+      go(0);
+    },
+    running: function(){ return active; }
+  };
+})();
+/* ---------------- boot ---------------- */
+on("btnMap", screenMap);
+on("btnCards", screenCards);
+on("btnStory", screenStory);
+on("btnSettings", screenSettings);
+
+/* Browsers will not start audio until the page has been touched once. */
+function unlockAudio(){
+  document.removeEventListener("pointerdown", unlockAudio);
+  document.removeEventListener("keydown", unlockAudio);
+  MUSIC.play("explore");
+}
+document.addEventListener("pointerdown", unlockAudio);
+document.addEventListener("keydown", unlockAudio);
+
+applySettings();
+screenMap();
+</script>

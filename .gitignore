@@ -1,0 +1,10 @@
+# Private — this folder documents a specific child's medical diagnoses.
+# It is deliberately kept out of the public repository.
+research/
+
+# Local scratch
+*.log
+.DS_Store
+Thumbs.db
+node_modules/
+.vercel
