@@ -276,6 +276,27 @@ table.stats td { font-variant-numeric: tabular-nums; }
 .tut-cta { border: 1px dashed var(--amber); border-radius: var(--radius); padding: 0.9rem 1rem; display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap; }
 .tut-cta p { margin: 0; color: var(--ink-soft); font-size: 0.94rem; flex: 1; min-width: 12rem; }
 
+/* ============ PLAYERS ============ */
+.players { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: var(--gap); }
+.player { background: var(--deck); border: 1px solid var(--edge); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+.player:hover { border-color: var(--amber); }
+.player.current { border-color: var(--amber); }
+.playpick { width: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; text-align: left; display: block; text-transform: none; letter-spacing: normal; font-family: "Atkinson Hyperlegible", sans-serif; font-weight: 400; }
+.playpick:hover { background: var(--deck-2); }
+.pbody { padding: 0.8rem 1rem 0.6rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.pname { font-family: "Barlow Condensed", sans-serif; font-size: 1.3rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1; }
+.pstat { font-family: "IBM Plex Mono", monospace; font-size: 0.64rem; letter-spacing: 0.08em; color: var(--ink-faint); text-transform: uppercase; }
+.avatar svg { display: block; width: 100%; height: auto; }
+.playeradmin { display: flex; gap: 0.4rem; padding: 0 1rem 0.8rem; }
+.playeradmin button { font-size: 0.64rem; padding: 0.22rem 0.5rem; }
+.addplayer { border-style: dashed; min-height: 11rem; display: flex; align-items: center; justify-content: center; color: var(--ink-soft); font-family: "Barlow Condensed", sans-serif; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.avatarpick { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.avatarpick button { padding: 0; width: 5.5rem; border-radius: var(--radius); overflow: hidden; }
+.avatarpick button[aria-pressed="true"] { border-color: var(--amber); box-shadow: 0 0 0 2px var(--amber); }
+.nameinput { font-family: "Atkinson Hyperlegible", sans-serif; font-size: 1.15rem; padding: 0.6rem 0.8rem; background: var(--deck-2); border: 1px solid var(--edge-hi); border-radius: var(--radius); color: var(--ink); width: 100%; max-width: 18rem; }
+.nameinput:focus-visible { outline: 2px solid var(--atomic); outline-offset: 2px; }
+#btnPlayer { border-color: var(--amber); color: var(--amber); }
+
 .sitefoot { border-top: 1px solid var(--edge); padding-top: 1rem; margin-top: 0.5rem; font-size: 0.78rem; color: var(--ink-faint); line-height: 1.6; }
 .sitefoot a { color: var(--ink-soft); }
 </style>
@@ -286,6 +307,7 @@ table.stats td { font-variant-numeric: tabular-nums; }
       <div class="mark"><i></i></div>
       <div><b>Titan Protocol</b><small>Monarch Keyboard Division</small></div>
     </div>
+    <button id="btnPlayer" class="ghost">◆ Players</button>
     <button id="btnStory" class="ghost">Story so far</button>
     <button id="btnCards" class="ghost">Dossiers</button>
     <button id="btnSettings" class="ghost">Settings</button>
@@ -974,27 +996,75 @@ const CONTENT = [
 /* =========================================================================
    STATE
    ========================================================================= */
-const SAVE_KEY = "titan-protocol-v2";
+const LEGACY_KEY  = "titan-protocol-v2";        // single-player save, pre-profiles
+const PROFILE_KEY = "titan-protocol-players";
+const SAVE_PREFIX = "titan-protocol-save-";
 const DEFAULTS = {
   cleared: {}, cards: {}, keyStats: {}, read: {},
   tutorialDone: false,
   settings: { sound:true, speech:true, motion:true, art:true, keyboard:true, music:true, musicVol:0.5, contrast:"normal", typeSize:1.9 }
 };
-let S = load();
-function load(){
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return seedDefaults();
-    const p = JSON.parse(raw);
-    return Object.assign(seedDefaults(), p, { settings: Object.assign({}, DEFAULTS.settings, p.settings || {}) });
-  } catch(e) { return seedDefaults(); }
-}
+/* Avatars are just Titans the player picks to represent them. */
+const AVATARS = ["godzilla","kong","mothra","rodan","ghidorah","behemoth","tiamat","skarking"];
+
+let PLAYERS = { list: [], activeId: null };
+let S = null;   // the active player's save
+
 function seedDefaults(){
   const d = JSON.parse(JSON.stringify(DEFAULTS));
   try { if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) d.settings.motion = false; } catch(e) {}
   return d;
 }
-function save(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch(e) {} }
+function normalise(raw){
+  if (!raw) return seedDefaults();
+  return Object.assign(seedDefaults(), raw, { settings: Object.assign({}, DEFAULTS.settings, raw.settings || {}) });
+}
+function readSave(id){
+  try { return normalise(JSON.parse(localStorage.getItem(SAVE_PREFIX + id))); }
+  catch(e) { return seedDefaults(); }
+}
+function writeSave(id, data){ try { localStorage.setItem(SAVE_PREFIX + id, JSON.stringify(data)); } catch(e) {} }
+function savePlayers(){ try { localStorage.setItem(PROFILE_KEY, JSON.stringify(PLAYERS)); } catch(e) {} }
+function save(){ if (PLAYERS.activeId) writeSave(PLAYERS.activeId, S); }
+
+function newPlayerId(){ return "p" + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36); }
+function createPlayer(name, avatar, initial){
+  const p = { id: newPlayerId(), name: name, avatar: avatar || AVATARS[PLAYERS.list.length % AVATARS.length] };
+  PLAYERS.list.push(p);
+  writeSave(p.id, initial || seedDefaults());
+  savePlayers();
+  return p;
+}
+function selectPlayer(id){
+  PLAYERS.activeId = id;
+  savePlayers();
+  S = readSave(id);
+  applySettings();
+  paintPlayerButton();
+}
+function activePlayer(){
+  for (let i = 0; i < PLAYERS.list.length; i++) if (PLAYERS.list[i].id === PLAYERS.activeId) return PLAYERS.list[i];
+  return PLAYERS.list[0] || null;
+}
+function deletePlayer(id){
+  PLAYERS.list = PLAYERS.list.filter(p => p.id !== id);
+  try { localStorage.removeItem(SAVE_PREFIX + id); } catch(e) {}
+  if (PLAYERS.activeId === id) PLAYERS.activeId = PLAYERS.list.length ? PLAYERS.list[0].id : null;
+  savePlayers();
+}
+function playerStats(id){
+  const d = readSave(id);
+  let h = 0, m = 0;
+  for (const k in d.keyStats) { h += d.keyStats[k][0]; m += d.keyStats[k][1]; }
+  return { chapters: Object.keys(d.read || {}).length,
+           cleared: Object.keys(d.cleared || {}).length,
+           acc: (h + m) ? Math.round(h / (h + m) * 100) : 100 };
+}
+function paintPlayerButton(){
+  const b = el("btnPlayer"); if (!b) return;
+  const p = activePlayer();
+  b.textContent = p ? "◆ " + p.name : "◆ Players";
+}
 function applySettings(){
   const r = document.documentElement;
   r.setAttribute("data-motion", S.settings.motion ? "on" : "off");
@@ -1251,6 +1321,110 @@ function show(html){ root.innerHTML = html; window.scrollTo(0, 0); }
 function el(id){ return document.getElementById(id); }
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 function on(id, fn){ const e = el(id); if (e) e.addEventListener("click", fn); }
+
+/* =========================================================================
+   SCREEN: PLAYERS
+   ========================================================================= */
+function avatarArt(rig, color){
+  return '<div class="avatar"><svg viewBox="0 0 240 180" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
+    '<rect width="240" height="180" fill="#0d141a"/>' +
+    titanSVG(rig, color, { scale: 0.8, dx: 24, dy: 26 }) + "</svg></div>";
+}
+function avatarColor(rig){
+  for (const k in TITANS) if (TITANS[k].rig === rig) return TITANS[k].color;
+  return "var(--amber)";
+}
+
+function screenPlayers(){
+  T = null;
+  const cards = PLAYERS.list.map(p => {
+    const st = playerStats(p.id);
+    return '<div class="player' + (p.id === PLAYERS.activeId ? " current" : "") + '">' +
+      '<button class="playpick" data-pick="' + p.id + '">' +
+        avatarArt(p.avatar, avatarColor(p.avatar)) +
+        '<div class="pbody"><div class="pname">' + esc(p.name) + "</div>" +
+        '<div class="pstat">' + st.chapters + " chapters · " + st.cleared + " cleared</div>" +
+        '<div class="pstat">' + st.acc + "% accuracy</div></div></button>" +
+      '<div class="playeradmin">' +
+        '<button class="ghost" data-ren="' + p.id + '">Rename</button>' +
+        '<button class="ghost" data-del="' + p.id + '">Delete</button>' +
+      "</div></div>";
+  }).join("");
+
+  show('<div class="screen">' +
+    '<div><span class="eyebrow">Monarch personnel</span><h2 class="title">Who\'s Playing?</h2></div>' +
+    '<p class="lede">Everyone gets their own story, their own dossiers and their own settings. Nothing you do affects anybody else\'s game.</p>' +
+    '<div class="players">' + cards +
+      '<button class="player addplayer" id="addplayer">+ Add a player</button>' +
+    "</div></div>");
+
+  root.querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => {
+    selectPlayer(b.dataset.pick);
+    MUSIC.play("explore");
+    screenMap();
+  }));
+  root.querySelectorAll("[data-ren]").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation();
+    const p = PLAYERS.list.filter(x => x.id === b.dataset.ren)[0];
+    screenEditPlayer(p);
+  }));
+  root.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation();
+    const p = PLAYERS.list.filter(x => x.id === b.dataset.del)[0];
+    const st = playerStats(p.id);
+    if (!confirm("Delete " + p.name + "?\n\nThis erases " + st.chapters + " chapters, " + st.cleared +
+                 " cleared levels and all their dossiers. It cannot be undone.")) return;
+    deletePlayer(p.id);
+    if (!PLAYERS.list.length) { createPlayer("Nolan", "godzilla"); PLAYERS.activeId = PLAYERS.list[0].id; savePlayers(); }
+    selectPlayer(PLAYERS.activeId);
+    screenPlayers();
+  }));
+  on("addplayer", () => screenEditPlayer(null));
+}
+
+function screenEditPlayer(existing){
+  T = null;
+  let chosen = existing ? existing.avatar : AVATARS[PLAYERS.list.length % AVATARS.length];
+  const picks = AVATARS.map(a =>
+    '<button data-av="' + a + '" aria-pressed="' + (a === chosen) + '">' + avatarArt(a, avatarColor(a)) + "</button>").join("");
+
+  show('<div class="screen">' +
+    '<div><span class="eyebrow">' + (existing ? "Edit player" : "New player") + '</span>' +
+    '<h2 class="title">' + (existing ? "Change " + esc(existing.name) : "Add a Player") + "</h2></div>" +
+    '<div class="panel"><label class="eyebrow" for="pname">Name</label>' +
+    '<input class="nameinput" id="pname" maxlength="16" autocomplete="off" value="' +
+      (existing ? esc(existing.name) : "") + '" placeholder="Type a name">' +
+    '<label class="eyebrow" style="margin-top:0.6rem">Pick a titan</label>' +
+    '<div class="avatarpick" id="avpick">' + picks + "</div></div>" +
+    '<div class="row"><button class="primary" id="savep">' + (existing ? "Save changes" : "Create player") + "</button>" +
+    '<button class="ghost" id="cancelp">Cancel</button></div></div>');
+
+  root.querySelectorAll("[data-av]").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation();
+    chosen = b.dataset.av;
+    root.querySelectorAll("[data-av]").forEach(x => x.setAttribute("aria-pressed", x.dataset.av === chosen));
+  }));
+  const input = el("pname");
+  setTimeout(() => { try { input.focus(); } catch(e) {} }, 60);
+  input.addEventListener("click", e => e.stopPropagation());
+  input.addEventListener("keydown", e => {
+    e.stopPropagation();
+    if (e.key === "Enter") el("savep").click();
+  });
+  on("cancelp", screenPlayers);
+  on("savep", () => {
+    const name = (input.value || "").trim();
+    if (!name) { input.focus(); return; }
+    if (existing) {
+      existing.name = name; existing.avatar = chosen; savePlayers();
+      if (existing.id === PLAYERS.activeId) paintPlayerButton();
+    } else {
+      const p = createPlayer(name, chosen);
+      selectPlayer(p.id);
+    }
+    screenPlayers();
+  });
+}
 
 /* =========================================================================
    SCREEN: MAP
@@ -1757,8 +1931,12 @@ function screenSettings(){
     'The game looks for <span class="mono">music/explore.mp3</span>, <span class="mono">battle.mp3</span>, <span class="mono">story.mp3</span> and <span class="mono">victory.mp3</span> beside this file and uses them if they are there. ' +
     "Otherwise it generates its own score. MP3s only play when the game is opened from your own computer — the web version always uses the generated score.</p>" +
     '<p class="lede" style="font-size:0.85rem">Music: <strong>Descent</strong>, <strong>Song of the Forge</strong>, <strong>Dragon\'s Lullaby</strong> and <strong>Simulacra</strong> by Scott Buckley (scottbuckley.com.au), used under CC BY 4.0.</p></div>' +
-    '<div class="panel"><span class="eyebrow">For grown-ups</span><h3 class="sub">Progress report</h3>' +
-    growUpBlock() + '<div class="row"><button id="reset" class="ghost">Erase all progress</button></div></div></div>');
+    '<div class="panel"><span class="eyebrow">For grown-ups</span>' +
+    '<h3 class="sub">Progress report — ' + esc(activePlayer() ? activePlayer().name : "no player") + "</h3>" +
+    growUpBlock() +
+    '<p class="lede" style="font-size:0.85rem">These settings and this progress belong to this player only. Everyone else keeps their own.</p>' +
+    '<div class="row"><button id="players">Switch player</button>' +
+    '<button id="reset" class="ghost">Erase this player\'s progress</button></div></div></div>');
 
   const flip = (id, get, set) => on(id, () => { set(!get()); save(); applySettings(); screenSettings(); });
   flip("tArt", () => s.art, v => s.art = v);
@@ -1776,8 +1954,11 @@ function screenSettings(){
   on("tContrast", () => { s.contrast = s.contrast === "high" ? "normal" : "high"; save(); applySettings(); screenSettings(); });
   on("sizeUp", () => { s.typeSize = Math.min(3.4, s.typeSize + 0.2); save(); applySettings(); screenSettings(); });
   on("sizeDown", () => { s.typeSize = Math.max(1.1, s.typeSize - 0.2); save(); applySettings(); screenSettings(); });
+  on("players", screenPlayers);
   on("reset", () => {
-    if (confirm("Erase all progress, chapters, dossiers and stats? This cannot be undone.")) {
+    const p = activePlayer();
+    if (confirm("Erase " + (p ? p.name + "'s" : "all") + " progress, chapters, dossiers and stats?\n\n" +
+                "Other players are not affected. This cannot be undone.")) {
       S = seedDefaults(); save(); applySettings(); screenMap();
     }
   });
@@ -1814,6 +1995,8 @@ const TUTORIAL = (function(){
     { title: "Welcome to Titan Protocol",
       text: "This is a typing game, and it is also a story about giant monsters. Every exercise you finish unlocks the next chapter. Let's walk through the whole thing — it takes about a minute.",
       setup: () => screenMap() },
+    { sel: "#btnPlayer", title: "Who's playing",
+      text: "Your name lives up here. More than one person can play on this computer, and everybody gets their own story, their own dossiers and their own settings — press this to switch." },
     { sel: "#btnMap", title: "The Map button",
       text: "This always brings you back to the front page, no matter where you are or what you are in the middle of. Nothing is ever lost by pressing it." },
     { sel: "#btnStory", title: "Story so far",
@@ -1945,6 +2128,40 @@ on("btnMap", screenMap);
 on("btnCards", screenCards);
 on("btnStory", screenStory);
 on("btnSettings", screenSettings);
+on("btnPlayer", screenPlayers);
+
+function boot(){
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    const p = raw ? JSON.parse(raw) : null;
+    if (p && p.list && p.list.length) PLAYERS = p;
+  } catch(e) {}
+
+  if (!PLAYERS.list.length) {
+    // First run. Carry over any progress from before profiles existed.
+    let legacy = null;
+    try { legacy = JSON.parse(localStorage.getItem(LEGACY_KEY)); } catch(e) {}
+    const first = createPlayer("Nolan", "godzilla", legacy ? normalise(legacy) : null);
+    PLAYERS.activeId = first.id;
+    savePlayers();
+    selectPlayer(first.id);
+    screenMap();
+    return;
+  }
+
+  const known = PLAYERS.list.some(p => p.id === PLAYERS.activeId);
+  if (PLAYERS.list.length === 1 && known) {
+    selectPlayer(PLAYERS.activeId);
+    screenMap();
+    return;
+  }
+  // More than one player: always ask who is playing.
+  S = seedDefaults();
+  applySettings();
+  paintPlayerButton();
+  screenPlayers();
+}
+boot();
 
 /* Browsers will not start audio until the page has been touched once. */
 function unlockAudio(){
@@ -1954,7 +2171,4 @@ function unlockAudio(){
 }
 document.addEventListener("pointerdown", unlockAudio);
 document.addEventListener("keydown", unlockAudio);
-
-applySettings();
-screenMap();
 </script>

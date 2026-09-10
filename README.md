@@ -43,6 +43,23 @@ Everything is in `index.html`:
 
 Progress is stored in `localStorage`, so it is per-browser and per-origin.
 
+## Players
+
+Several people can share one browser. Each player has their own progress,
+dossiers, story chapters **and settings** — sensory preferences differ from
+child to child, so text size, contrast, animation and sound are all saved
+per player rather than globally.
+
+- On first run a player named Nolan is created and the game opens straight
+  into the map. With one player there is no picker to get past.
+- With two or more players the game asks who is playing on every load.
+- Players are added, renamed and deleted from the Players screen, and each
+  picks a Titan as their avatar.
+
+Storage keys: `titan-protocol-players` holds the roster, and each player's
+save lives at `titan-protocol-save-<id>`. A pre-profiles save under
+`titan-protocol-v2` is migrated into the first player automatically.
+
 ## Music
 
 The game looks for four files and uses them if present:
