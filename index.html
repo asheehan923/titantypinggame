@@ -379,6 +379,7 @@ const RIG = {
       ["wing2","96,102 58,64 24,50 16,74 46,100 76,114"],
       ["wing","134,102 172,66 206,54 212,80 182,104 150,118"],
       ["tail","102,136 84,152 60,166 86,152 104,144"],
+      ["tail","116,140 126,158 150,170 132,154 124,142"],
       ["body","96,102 120,96 136,110 132,136 110,146 90,134 86,116"],
       ["head","106,104 96,100 72,70 50,42 60,32 84,62 110,94"],
       ["extra","46,24 66,30 70,42 52,48 38,38"],
@@ -425,12 +426,19 @@ const RIG = {
       ["arm","172,120 180,142 174,160 164,142 162,124"]],
     dots: [[176,96,2.8]], beam: [206,132] },
 
+  /* A rock turtle: craggy domed shell, head poking out the front. */
   methuselah: { parts: [
-      ["body","18,150 62,72 92,110 122,44 158,104 186,70 222,150"],
-      ["extra","64,150 68,168 84,168 82,150"],
-      ["extra","150,150 154,170 172,170 168,150"],
-      ["extra","104,146 108,164 122,164 120,146"]],
-    dots: [[112,86,3],[132,90,3]], beam: [150,90] },
+      ["tail","42,134 22,142 42,146"],
+      ["extra","54,140 76,140 78,158 50,158"],
+      ["extra","160,140 184,140 190,158 162,158"],
+      ["body","38,138 44,114 56,106 60,92 76,86 84,74 102,72 110,62 128,66 140,58 156,70 170,72 180,88 190,98 196,118 200,138"],
+      ["extra","34,136 204,136 196,146 44,146"],
+      ["extra","78,102 102,92 118,106 98,120"],
+      ["extra","124,88 150,86 160,106 136,114"],
+      ["extra","92,124 120,120 126,134 96,134"],
+      ["extra","146,116 174,110 182,132 150,133"],
+      ["head","194,122 212,110 228,114 234,126 224,136 200,138"]],
+    dots: [[220,120,2.8]], beam: [236,124] },
 
   crawler: { parts: [
       ["tail","112,112 84,124 50,138 18,152 52,144 86,134 110,124"],
@@ -597,7 +605,7 @@ const TITANS = {
   behemoth:  { name:"Behemoth",      desig:"Titanus Behemoth",        rig:"behemoth",  color:"var(--good)",   role:"Protector", scene:"jungle",
                note:"A mountain with tusks. Everywhere he walks, the forest comes back." },
   methuselah:{ name:"Methuselah",    desig:"Titanus Methuselah",      rig:"methuselah",color:"var(--ink-soft)",role:"Neutral",  scene:"alps",
-               note:"So old the old maps drew him as a mountain range." },
+               note:"A rock turtle so old the maps drew his shell as a mountain range." },
   rodan:     { name:"Rodan",         desig:"Titanus Rodan",           rig:"rodan",     color:"var(--ember)",  role:"Destroyer", scene:"volcano",
                note:"The Fire Demon. Leaves a volcano faster than the sound of him does." },
   ghidorah:  { name:"King Ghidorah", desig:"Titanus Ghidorah",        rig:"ghidorah",  color:"var(--ember)",  role:"Destroyer", scene:"ice",
@@ -775,9 +783,9 @@ const CONTENT = [
       winStory:["Kong wedges the Warbat against the rock, holds it there until it stops arguing, and keeps walking without looking back.",
                 "Forty minutes later the passage opens out, and there is sky in front of him. Sky. Underground."] },
 
-    { name:"Every Key", keys:"+ b  x  z  ,  .", boss:"tiamat", scene:"hollow",
+    { name:"Every Key", keys:"+ b  x  z  ,  .", boss:"tiamat", heroes:["godzilla","kong"], scene:"hollow",
       brief:"The last four letters, and your first two punctuation marks. After this level there is not one key left on the board that you have not been taught.",
-      bossLine:"A river made of wind, with something enormous coiled up inside it.",
+      bossLine:"A river made of wind, with something enormous coiled up inside it. Kong can't take this one alone — and he doesn't have to. Godzilla has followed him down.",
       levels:[
         { type:"drill", name:"B and X", title:"A Sun That Isn't",
           story:["Kong stops walking, which he almost never does. Below him: forests, rivers, ruins with the roofs still on them, and a light hanging in the middle of the sky.",
@@ -792,12 +800,12 @@ const CONTENT = [
                  "Nothing has crossed it in a thousand years. Not because of the wind. Because of what lives in it."],
           words:["battle","frozen","horizon","bridge","beacon","hazard","beast","zone"] }
       ],
-      winStory:["Tiamat uncoils, slides back into the wind, and lets him pass. It is not surrender exactly. It is more like being let through a door by somebody who could have said no.",
-                "Ahead, on the far bank, there is a throne. It has been carved out of bone."] },
+      winStory:["Kong holds Tiamat down while Godzilla hits her with everything he has, and for once the two biggest things in the world are pulling in the same direction.",
+                "She uncoils, slides back into the wind, and lets them both pass. Ahead, on the far bank, there is a throne. It has been carved out of bone."] },
 
-    { name:"The Skar King", keys:"+ Shift", boss:"skarking", scene:"throne",
+    { name:"The Skar King", keys:"+ Shift", boss:"skarking", heroes:["godzilla"], scene:"throne",
       brief:"Capital letters. Hold Shift with the hand opposite the letter — left-hand letter, right-hand Shift. Never both hands on the same side of the board.",
-      bossLine:"He has a whip made from a spine, and an ice titan on a leash. He has been waiting a long time for another ape.",
+      bossLine:"He has a whip made from a spine, and an ice titan on a leash. He was waiting for another ape. What walks up to the throne instead is Godzilla.",
       levels:[
         { type:"drill", name:"Names", title:"The Tribe",
           story:["On the far side Kong finds them. Dozens of them — his own kind, hauling, carrying, digging, every one of them wearing something around the neck.",
@@ -812,7 +820,7 @@ const CONTENT = [
                  "That is because of the crystal in his other hand. When she disagrees, he squeezes it, and it hurts her."],
           words:["Kong","Mothra","Monarch","Godzilla","Shimo","Rodan","Tiamat","Behemoth"] }
       ],
-      winStory:["The crystal comes apart in Kong's fist, and every head in the valley turns at the sound.",
+      winStory:["Godzilla's atomic breath snaps the whip in half, and the Skar King goes down on his own throne steps. While he is down, Kong takes the crystal out of his hand and crushes it, and every head in the valley turns at the sound.",
                 "Shimo stops mid-step, blinks, and goes quiet for the first time in a thousand years. The tribe puts down what it is carrying.",
                 "Storyline two complete. Kong has a family again, and he did not have to be the biggest thing in the world to get one."] }
   ]
@@ -1249,7 +1257,8 @@ const MOVES = {
 };
 const FINISHER = {
   godzilla: { name:"ATOMIC BREATH", line:"The dorsal plates run blue, then white, and everything in front of him stops existing." },
-  kong:     { name:"AXE STRIKE",    line:"He plants both feet, brings the axe over the top, and does not miss." }
+  kong:     { name:"AXE STRIKE",    line:"He plants both feet, brings the axe over the top, and does not miss." },
+  team:     { name:"ATOMIC AXE",    line:"Kong's axe comes down in the same second as Godzilla's breath." }
 };
 
 /* ---------------- addressing ---------------- */
@@ -1683,10 +1692,20 @@ function battleWords(ci, si){
 }
 
 function startBoss(ci, si){
-  const c = CONTENT[ci], st = c.stages[si], t = TITANS[st.boss], hero = TITANS[c.hero];
+  const c = CONTENT[ci], st = c.stages[si], t = TITANS[st.boss];
+  // A stage can name its own fighters; otherwise the storyline's hero fights.
+  const heroIds = st.heroes || [c.hero];
+  const heroes = heroIds.map(id => TITANS[id]);
+  const hero = heroes[0];
+  const team = heroIds.length > 1;
+  let turn = 0;   // in a team fight, the heroes take turns striking
   const words = battleWords(ci, si);
-  const moves = MOVES[c.hero] || MOVES.godzilla;
-  const fin = FINISHER[c.hero] || FINISHER.godzilla;
+  const fin = team ? FINISHER.team : (FINISHER[heroIds[0]] || FINISHER.godzilla);
+  const heroLayer = team
+    ? heroIds.map((id, i) => '<g id="heroG' + i + '">' +
+        titanSVG(TITANS[id].rig, TITANS[id].color, { scale: 0.56, dx: i === 0 ? 70 : 0, dy: 68 }) + "</g>")
+        .reverse().join("")      // draw the second hero first, so the first stands in front
+    : '<g id="heroG0">' + titanSVG(hero.rig, hero.color, { scale: 0.66, dx: 8, dy: 56 }) + "</g>";
   let hp = BOSS_HP, shields = SHIELDS, missBuf = 0, charge = 0, wordMisses = 0, over = false;
   const gid = "b" + (++artSeq);
   MUSIC.play("battle");
@@ -1695,7 +1714,7 @@ function startBoss(ci, si){
     ? '<div class="arena-art" id="arena">' +
       '<svg viewBox="0 0 480 180" preserveAspectRatio="xMidYMid meet">' +
         sceneSVG(st.scene, gid, 2) +
-        '<g id="heroG">' + titanSVG(hero.rig, hero.color, { scale: 0.66, dx: 8, dy: 56 }) + "</g>" +
+        heroLayer +
         '<g id="foeG">' + titanSVG(t.rig, t.color, { flip: true, flipW: 480, scale: 0.66, dx: 8, dy: 56 }) + "</g>" +
         '<rect class="beam" id="beam" x="166" y="96" width="150" height="5" rx="2.5" fill="' + hero.color + '"/>' +
         '<rect class="bigbeam" id="bigbeam" x="162" y="88" width="162" height="14" rx="7" fill="#ffffff" opacity="0"/>' +
@@ -1711,8 +1730,8 @@ function startBoss(ci, si){
     '<div class="callout ember"><span class="speaker">Incoming</span>' + esc(st.bossLine) + "</div>" +
     arena +
     '<div class="combat">' +
-      '<div class="gauge"><div class="gname">' + esc(hero.name) + "</div>" +
-      '<div class="gsub">' + esc(hero.desig) + "</div>" +
+      '<div class="gauge"><div class="gname">' + esc(heroes.map(h => h.name).join(" & ")) + "</div>" +
+      '<div class="gsub">' + esc(heroes.map(h => h.desig).join(" · ")) + "</div>" +
       '<div class="shields" id="shields"></div>' +
       '<div class="chargebar" id="chargebar"><i id="chargeFill"></i></div>' +
       '<div class="gsub" id="chargeLabel">Shields · ' + esc(fin.name) + " charge</div></div>" +
@@ -1759,14 +1778,17 @@ function startBoss(ci, si){
     b.className = "go" + (isFin ? " fin" : "");
   }
   function heroAttacks(){
-    banner(moves[Math.floor(Math.random() * moves.length)], false);
-    fx("heroG", "fx-lunge-r", 420);
+    const who = team ? turn++ % heroIds.length : 0;
+    const moves = MOVES[heroIds[who]] || MOVES.godzilla;
+    const move = moves[Math.floor(Math.random() * moves.length)];
+    banner(team ? heroes[who].name + ": " + move : move, false);
+    fx("heroG" + who, "fx-lunge-r", 420);
     fx("beam", "fire", 520);
     setTimeout(() => { fx("foeG", "fx-recoil-r", 380); fx("impact", "go", 520); }, 180);
   }
   function finisherAttacks(){
     banner(fin.name, true);
-    fx("heroG", "fx-lunge-r", 420);
+    heroIds.forEach((_, i) => fx("heroG" + i, "fx-lunge-r", 420));
     fx("bigbeam", "fire", 1150);
     tone(60, 900, 0.09, "sawtooth");
     setTimeout(() => tone(180, 700, 0.06, "square"), 120);
@@ -1779,7 +1801,10 @@ function startBoss(ci, si){
   }
   function foeAttacks(){
     fx("foeG", "fx-lunge-l", 420);
-    setTimeout(() => { fx("heroG", "fx-recoil-l", 380); fx("arena", "shaking", 420); fx("flash", "go", 380); }, 150);
+    setTimeout(() => {
+      heroIds.forEach((_, i) => fx("heroG" + i, "fx-recoil-l", 380));
+      fx("arena", "shaking", 420); fx("flash", "go", 380);
+    }, 150);
   }
   function finish(){
     if (over) return;
