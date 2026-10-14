@@ -1140,6 +1140,7 @@ const MUSIC = (function(){
   // never end up running on top of each other.
   let ticket = 0, pending = null;
   const TRACK_NAMES = { explore:"Descent", battle:"Song of the Forge", story:"Dragon's Lullaby", victory:"Simulacra" };
+  let held = false;
 
   function mtof(m){ return 440 * Math.pow(2, (m - 69) / 12); }
   function impulse(){
@@ -1270,6 +1271,24 @@ const MUSIC = (function(){
       if (!S.settings.music || !cur) return;
       if (audioEl) return;               // already playing a real track
       startTrack(cur, true);
+    },
+    // Hold the music while the game is hidden or closed, and pick it up again
+    // where it left off. Without this it keeps playing after the page is gone.
+    hold: function(){
+      if (held || !cur) return;
+      held = true;
+      if (audioEl) { try { audioEl.pause(); } catch(e) {} }
+      stopGenerated();
+      if (ctx) { try { ctx.suspend(); } catch(e) {} }
+    },
+    unhold: function(){
+      if (!held) return;
+      held = false;
+      if (!S.settings.music || !cur) return;
+      if (ctx) { try { ctx.resume(); } catch(e) {} }
+      if (audioEl) { audioEl.play().catch(() => {}); }
+      else if (useFiles === false) tick();
+      else startTrack(cur, true);
     },
     source: function(){
       if (!cur) return "nothing playing";
@@ -2235,4 +2254,16 @@ function unlockAudio(){
 }
 document.addEventListener("pointerdown", unlockAudio);
 document.addEventListener("keydown", unlockAudio);
+
+/* Stop the music when the game is closed, hidden or clicked away from, and
+   pick it up again on the way back. visibilitychange covers switching tabs or
+   minimising; blur also covers the game being tucked away inside another page,
+   where the document never reports itself as hidden. */
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) MUSIC.hold(); else MUSIC.unhold();
+});
+window.addEventListener("blur", () => MUSIC.hold());
+window.addEventListener("focus", () => { if (!document.hidden) MUSIC.unhold(); });
+window.addEventListener("pagehide", () => MUSIC.stop());
+window.addEventListener("beforeunload", () => MUSIC.stop());
 </script>
