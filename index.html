@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Titan Protocol</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1138,6 +1139,7 @@ const MUSIC = (function(){
   // play() has started is stale and throws itself away, so two tracks can
   // never end up running on top of each other.
   let ticket = 0, pending = null;
+  const TRACK_NAMES = { explore:"Descent", battle:"Song of the Forge", story:"Dragon's Lullaby", victory:"Simulacra" };
 
   function mtof(m){ return 440 * Math.pow(2, (m - 69) / 12); }
   function impulse(){
@@ -1199,13 +1201,50 @@ const MUSIC = (function(){
     beat++;
     timer = setTimeout(tick, spb * 1000);
   }
+  function startTrack(name, force){
+    if (!S.settings.music) return;
+    // Already playing this, or already loading it — leave it alone.
+    if (!force && cur === name && (timer || audioEl || pending === name)) return;
+    const mine = ++ticket;
+    cur = name; pending = name; beat = 0;
+    stopGenerated(); stopFile();
+    if (!init()) { pending = null; return; }
+    if (ctx.state === "suspended") { try { ctx.resume(); } catch(e) {} }
+    if (useFiles === false) { pending = null; tick(); return; }
+    tryFile(name).then(a => {
+      if (mine !== ticket) {                       // superseded while loading
+        if (a) { try { a.pause(); } catch(e) {} }
+        return;
+      }
+      pending = null;
+      if (!a) { if (useFiles === null) useFiles = false; tick(); return; }
+      useFiles = true;
+      a.play().then(() => {
+        if (mine !== ticket) { try { a.pause(); } catch(e) {} return; }
+        audioEl = a;
+        stopGenerated();                           // never leave both running
+      }).catch(() => {
+        // Blocked until the page is clicked. Fall back for now; MUSIC.retry()
+        // picks the real track up again on the first interaction.
+        if (mine !== ticket) return;
+        audioEl = null;
+        tick();
+      });
+    });
+  }
   function stopGenerated(){ if (timer) { clearTimeout(timer); timer = null; } }
   function stopFile(){ if (audioEl) { try { audioEl.pause(); } catch(e){} audioEl = null; } }
 
+  function trackSrc(name){
+    // A build can inline the audio (see build-artifact.py); otherwise load it
+    // from the music folder next to this page.
+    const emb = window.TITAN_MUSIC;
+    return (emb && emb[name]) || ("music/" + name + ".mp3");
+  }
   function tryFile(name){
     return new Promise(res => {
       let a;
-      try { a = new Audio("music/" + name + ".mp3"); } catch(e) { return res(null); }
+      try { a = new Audio(trackSrc(name)); } catch(e) { return res(null); }
       a.loop = true;
       a.preload = "auto";
       a.volume = S.settings.musicVol;
@@ -1223,32 +1262,21 @@ const MUSIC = (function(){
   }
 
   return {
-    play: function(name){
-      if (!S.settings.music) return;
-      // Already playing this, or already loading it — leave it alone.
-      if (cur === name && (timer || audioEl || pending === name)) return;
-      const mine = ++ticket;
-      cur = name; pending = name; beat = 0;
-      stopGenerated(); stopFile();
-      if (!init()) { pending = null; return; }
-      if (ctx.state === "suspended") { try { ctx.resume(); } catch(e){} }
-      if (useFiles === false) { pending = null; tick(); return; }
-      tryFile(name).then(a => {
-        if (mine !== ticket) {           // superseded while loading
-          if (a) { try { a.pause(); } catch(e) {} }
-          return;
-        }
-        pending = null;
-        if (a) { useFiles = true; audioEl = a; a.play().catch(() => { audioEl = null; tick(); }); }
-        else { if (useFiles === null) useFiles = false; tick(); }
-      });
-    },
+    play: function(name){ startTrack(name, false); },
     stop: function(){ ++ticket; cur = null; pending = null; stopGenerated(); stopFile(); },
+    // Retry the current track — used after the first click, because browsers
+    // refuse to start audio until the page has been interacted with.
+    retry: function(){
+      if (!S.settings.music || !cur) return;
+      if (audioEl) return;               // already playing a real track
+      startTrack(cur, true);
+    },
     source: function(){
-      if (!cur) return "not playing";
-      if (audioEl) return "your MP3s";
-      if (useFiles === false) return "generated score (no MP3s found)";
-      return "starting…";
+      if (!cur) return "nothing playing";
+      const theme = TRACK_NAMES[cur] ? TRACK_NAMES[cur] + " (" + cur + ")" : cur;
+      if (audioEl) return theme + " — your MP3";
+      if (useFiles === false) return "the built-in score, " + cur + " theme — no MP3s found";
+      return theme + " — starting…";
     },
     vol: function(v){
       if (master) master.gain.value = v;
@@ -1964,8 +1992,8 @@ function screenSettings(){
       s.typeSize.toFixed(1) + "</span><button id='sizeUp'>+</button></span></div>" +
     "</div></div>" +
     '<p class="lede" style="font-size:0.85rem">Now playing: <span class="mono">' + esc(MUSIC.source()) + "</span>. " +
-    'The game looks for <span class="mono">music/explore.mp3</span>, <span class="mono">battle.mp3</span>, <span class="mono">story.mp3</span> and <span class="mono">victory.mp3</span> beside this file and uses them if they are there. ' +
-    "Otherwise it generates its own score. MP3s only play when the game is opened from your own computer — the web version always uses the generated score.</p>" +
+    'The game looks for <span class="mono">music/explore.mp3</span>, <span class="mono">battle.mp3</span>, <span class="mono">story.mp3</span> and <span class="mono">victory.mp3</span> beside this page, ' +
+    "and falls back to a score it builds itself if they are not there.</p>" +
     '<p class="lede" style="font-size:0.85rem">Music: <strong>Descent</strong>, <strong>Song of the Forge</strong>, <strong>Dragon\'s Lullaby</strong> and <strong>Simulacra</strong> by Scott Buckley (scottbuckley.com.au), used under CC BY 4.0.</p></div>' +
     '<div class="panel"><span class="eyebrow">For grown-ups</span>' +
     '<h3 class="sub">Progress report — ' + esc(activePlayer() ? activePlayer().name : "no player") + "</h3>" +
@@ -2203,7 +2231,7 @@ boot();
 function unlockAudio(){
   document.removeEventListener("pointerdown", unlockAudio);
   document.removeEventListener("keydown", unlockAudio);
-  MUSIC.play("explore");
+  MUSIC.retry();          // the real track, now that clicking has allowed it
 }
 document.addEventListener("pointerdown", unlockAudio);
 document.addEventListener("keydown", unlockAudio);

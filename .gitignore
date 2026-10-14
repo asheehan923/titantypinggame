@@ -8,3 +8,7 @@ research/
 Thumbs.db
 node_modules/
 .vercel
+
+# build output
+.build/
+_test-artifact.html
