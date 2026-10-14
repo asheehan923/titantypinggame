@@ -1076,6 +1076,32 @@ function deletePlayer(id){
    These two turn everything into a file (or a block of text to paste) that
    can be brought back later, or moved to another computer.             */
 const BACKUP_TAG = "titan-protocol-backup";
+
+/* Saving a file works two different ways depending on where the game is
+   running. On a web address or a local file we make the browser download a
+   blob. Inside the claude.ai viewer the page is sandboxed and a plain
+   download link is ignored, so the viewer's own save has to be asked for
+   instead; it shows a confirmation the player can decline. */
+let dlPromise = null;
+function getDownloads(){
+  if (!dlPromise) {
+    dlPromise = (window.claude && window.claude.use)
+      ? window.claude.use("downloads").catch(() => null)
+      : Promise.resolve(null);
+  }
+  return dlPromise;
+}
+function saveTextFile(filename, text){
+  return getDownloads().then(dl => {
+    if (dl) return dl.save({ filename: filename, data: text }).then(() => "saved");
+    const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+    return "saved";
+  });
+}
 function exportData(){
   const saves = {};
   PLAYERS.list.forEach(p => { saves[p.id] = readSave(p.id); });
@@ -2048,7 +2074,7 @@ function screenBackup(){
     '<p class="lede" style="font-size:0.9rem">This backup holds <strong>' + esc(who) + "</strong>.</p>" +
     '<div class="row"><button class="primary" id="dl">⬇ Download backup file</button>' +
     '<button id="copy">Copy the text instead</button></div>' +
-    '<p class="lede" style="font-size:0.82rem">If the download button does nothing — some viewers block downloads — copy the text below into a file instead, and keep it with your documents.</p>' +
+    '<p class="lede" style="font-size:0.82rem">Prefer to keep it somewhere else? Copy the text below into a document instead — it restores exactly the same way.</p>' +
     '<textarea class="backupbox" id="dump" readonly spellcheck="false">' + esc(text) + "</textarea>" +
     '<div id="copymsg"></div></div>' +
 
@@ -2069,20 +2095,17 @@ function screenBackup(){
 
   on("dl", e => {
     e.stopPropagation();
-    try {
-      const blob = new Blob([text], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "titan-protocol-backup-" + stamp + ".json";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
-      el("copymsg").innerHTML = '<span class="okmsg">Saved as titan-protocol-backup-' + stamp +
-        ".json — check your Downloads folder. If it is not there, use the copy button.</span>";
-    } catch(err) {
-      el("copymsg").innerHTML = '<span class="errmsg">This viewer blocked the download. Use “Copy the text instead”.</span>';
-    }
+    const filename = "titan-protocol-backup-" + stamp + ".json";
+    const msg = el("copymsg");
+    msg.innerHTML = '<span class="lede" style="font-size:0.85rem">Saving…</span>';
+    saveTextFile(filename, text).then(() => {
+      msg.innerHTML = '<span class="okmsg">Saved as ' + esc(filename) + ". Keep it somewhere safe.</span>";
+    }).catch(err => {
+      const code = (err && err.code) || "";
+      msg.innerHTML = code === "declined"
+        ? '<span class="lede" style="font-size:0.85rem">Save cancelled — nothing was written.</span>'
+        : '<span class="errmsg">Could not save the file here. Use “Copy the text instead” and paste it into a document.</span>';
+    });
   });
 
   on("copy", e => {
