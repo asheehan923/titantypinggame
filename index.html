@@ -296,6 +296,10 @@ table.stats td { font-variant-numeric: tabular-nums; }
 .avatarpick button[aria-pressed="true"] { border-color: var(--amber); box-shadow: 0 0 0 2px var(--amber); }
 .nameinput { font-family: "Atkinson Hyperlegible", sans-serif; font-size: 1.15rem; padding: 0.6rem 0.8rem; background: var(--deck-2); border: 1px solid var(--edge-hi); border-radius: var(--radius); color: var(--ink); width: 100%; max-width: 18rem; }
 .nameinput:focus-visible { outline: 2px solid var(--atomic); outline-offset: 2px; }
+.slider { -webkit-appearance: none; appearance: none; width: 8.5rem; height: 6px; border-radius: 3px; background: var(--edge); outline: none; margin: 0; }
+.slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--amber); border: 0; cursor: pointer; }
+.slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--amber); border: 0; cursor: pointer; }
+.slider:focus-visible { outline: 2px solid var(--atomic); outline-offset: 4px; }
 #btnPlayer { border-color: var(--amber); color: var(--amber); }
 
 .sitefoot { border-top: 1px solid var(--edge); padding-top: 1rem; margin-top: 0.5rem; font-size: 0.78rem; color: var(--ink-faint); line-height: 1.6; }
@@ -1999,9 +2003,11 @@ function screenSettings(){
       tog("tMotion", "Animation", s.motion) +
       tog("tSound", "Sound effects", s.sound) +
       tog("tMusic", "Music", s.music) +
-      '<div class="setrow"><label>Music volume</label><span class="row">' +
-      '<button id="volDown">−</button><span class="mono" style="min-width:2.6rem;text-align:center">' +
-      Math.round(s.musicVol * 100) + "%</span><button id='volUp'>+</button></span></div>" +
+      '<div class="setrow"><label for="vol">Music volume</label><span class="row">' +
+      '<input class="slider" id="vol" type="range" min="0" max="100" step="5" value="' +
+      Math.round(s.musicVol * 100) + '" aria-label="Music volume">' +
+      '<span class="mono" id="volVal" style="min-width:2.8rem;text-align:right">' +
+      Math.round(s.musicVol * 100) + "%</span></span></div>" +
     "</div><div>" +
       tog("tSpeech", "Read words out loud", s.speech) +
       tog("tKeyboard", "Show the keyboard guide", s.keyboard) +
@@ -2032,8 +2038,20 @@ function screenSettings(){
     if (s.music) MUSIC.play("explore"); else MUSIC.stop();
     screenSettings();
   });
-  on("volUp", () => { s.musicVol = Math.min(1, +(s.musicVol + 0.1).toFixed(2)); MUSIC.vol(s.musicVol); save(); screenSettings(); });
-  on("volDown", () => { s.musicVol = Math.max(0, +(s.musicVol - 0.1).toFixed(2)); MUSIC.vol(s.musicVol); save(); screenSettings(); });
+  const vol = el("vol");
+  if (vol) {
+    // Live while dragging, saved when let go — re-rendering on every step
+    // would yank the slider out from under the thumb.
+    vol.addEventListener("input", e => {
+      e.stopPropagation();
+      s.musicVol = +vol.value / 100;
+      MUSIC.vol(s.musicVol);
+      el("volVal").textContent = vol.value + "%";
+    });
+    vol.addEventListener("change", e => { e.stopPropagation(); save(); });
+    vol.addEventListener("keydown", e => e.stopPropagation());
+    vol.addEventListener("click", e => e.stopPropagation());
+  }
   on("tContrast", () => { s.contrast = s.contrast === "high" ? "normal" : "high"; save(); applySettings(); screenSettings(); });
   on("sizeUp", () => { s.typeSize = Math.min(3.4, s.typeSize + 0.2); save(); applySettings(); screenSettings(); });
   on("sizeDown", () => { s.typeSize = Math.max(1.1, s.typeSize - 0.2); save(); applySettings(); screenSettings(); });
