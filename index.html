@@ -783,9 +783,9 @@ const CONTENT = [
       winStory:["Kong wedges the Warbat against the rock, holds it there until it stops arguing, and keeps walking without looking back.",
                 "Forty minutes later the passage opens out, and there is sky in front of him. Sky. Underground."] },
 
-    { name:"Every Key", keys:"+ b  x  z  ,  .", boss:"tiamat", heroes:["godzilla","kong"], scene:"hollow",
+    { name:"Every Key", keys:"+ b  x  z  ,  .", boss:"tiamat", heroes:["godzilla"], scene:"hollow",
       brief:"The last four letters, and your first two punctuation marks. After this level there is not one key left on the board that you have not been taught.",
-      bossLine:"A river made of wind, with something enormous coiled up inside it. Kong can't take this one alone — and he doesn't have to. Godzilla has followed him down.",
+      bossLine:"A river made of wind, with something enormous coiled up inside it. Godzilla came down the shaft ahead of Kong, and this one is his.",
       levels:[
         { type:"drill", name:"B and X", title:"A Sun That Isn't",
           story:["Kong stops walking, which he almost never does. Below him: forests, rivers, ruins with the roofs still on them, and a light hanging in the middle of the sky.",
@@ -800,12 +800,12 @@ const CONTENT = [
                  "Nothing has crossed it in a thousand years. Not because of the wind. Because of what lives in it."],
           words:["battle","frozen","horizon","bridge","beacon","hazard","beast","zone"] }
       ],
-      winStory:["Kong holds Tiamat down while Godzilla hits her with everything he has, and for once the two biggest things in the world are pulling in the same direction.",
-                "She uncoils, slides back into the wind, and lets them both pass. Ahead, on the far bank, there is a throne. It has been carved out of bone."] },
+      winStory:["Godzilla takes Tiamat apart inside her own river of wind, and the screaming air goes quiet for the first time in a thousand years.",
+                "She uncoils and slides away into the dark. Ahead, on the far bank, there is a throne. It has been carved out of bone, and it is Kong's turn now."] },
 
-    { name:"The Skar King", keys:"+ Shift", boss:"skarking", heroes:["godzilla"], scene:"throne",
+    { name:"The Skar King", keys:"+ Shift", boss:"skarking", heroes:["kong"], scene:"throne",
       brief:"Capital letters. Hold Shift with the hand opposite the letter — left-hand letter, right-hand Shift. Never both hands on the same side of the board.",
-      bossLine:"He has a whip made from a spine, and an ice titan on a leash. He was waiting for another ape. What walks up to the throne instead is Godzilla.",
+      bossLine:"He has a whip made from a spine, and an ice titan on a leash. He has been waiting a long time for another ape — and here comes one.",
       levels:[
         { type:"drill", name:"Names", title:"The Tribe",
           story:["On the far side Kong finds them. Dozens of them — his own kind, hauling, carrying, digging, every one of them wearing something around the neck.",
@@ -820,7 +820,7 @@ const CONTENT = [
                  "That is because of the crystal in his other hand. When she disagrees, he squeezes it, and it hurts her."],
           words:["Kong","Mothra","Monarch","Godzilla","Shimo","Rodan","Tiamat","Behemoth"] }
       ],
-      winStory:["Godzilla's atomic breath snaps the whip in half, and the Skar King goes down on his own throne steps. While he is down, Kong takes the crystal out of his hand and crushes it, and every head in the valley turns at the sound.",
+      winStory:["Kong puts the Skar King down on his own throne steps, ape against ape, the fair fight he spent his whole life avoiding. The crystal comes apart in Kong's fist, and every head in the valley turns at the sound.",
                 "Shimo stops mid-step, blinks, and goes quiet for the first time in a thousand years. The tribe puts down what it is carrying.",
                 "Storyline two complete. Kong has a family again, and he did not have to be the biggest thing in the world to get one."] }
   ]
@@ -1128,13 +1128,16 @@ function speak(text){
    ========================================================================= */
 const MUSIC = (function(){
   const THEMES = {
-    explore: { root:45, bpm:50, prog:[[0,3,7],[-4,0,3],[-2,3,7],[-5,0,4]], gain:0.13, drums:false, mel:0.16, wave:"triangle" },
-    story:   { root:48, bpm:44, prog:[[0,4,7],[-3,0,5],[-5,0,4],[-7,0,3]], gain:0.11, drums:false, mel:0.10, wave:"sine" },
-    battle:  { root:33, bpm:92, prog:[[0,3,7],[0,3,10],[-2,3,6],[-3,0,4]], gain:0.16, drums:true,  mel:0.24, wave:"sawtooth" },
-    victory: { root:50, bpm:66, prog:[[0,4,7],[5,9,12],[-3,4,9],[0,4,7]], gain:0.15, drums:false, mel:0.30, wave:"triangle" }
+    explore: { root:45, bpm:50, prog:[[0,3,7],[-4,0,3],[-2,3,7],[-5,0,4]], gain:0.12, drums:false, mel:true,  wave:"triangle" },
+    story:   { root:48, bpm:44, prog:[[0,4,7],[-3,0,5],[-5,0,4],[-7,0,3]], gain:0.10, drums:false, mel:false, wave:"sine" },
+    battle:  { root:33, bpm:92, prog:[[0,3,7],[0,3,10],[-2,3,6],[-3,0,4]], gain:0.14, drums:true,  mel:true,  wave:"triangle" },
+    victory: { root:50, bpm:66, prog:[[0,4,7],[5,9,12],[-3,4,9],[0,4,7]], gain:0.14, drums:false, mel:true,  wave:"triangle" }
   };
-  const SCALE = [0,2,3,5,7,8,10];
   let ctx = null, master = null, verbIn = null, timer = null, beat = 0, cur = null, audioEl = null, useFiles = null;
+  // Every play() takes a ticket. A track load that finishes after a newer
+  // play() has started is stale and throws itself away, so two tracks can
+  // never end up running on top of each other.
+  let ticket = 0, pending = null;
 
   function mtof(m){ return 440 * Math.pow(2, (m - 69) / 12); }
   function impulse(){
@@ -1187,9 +1190,11 @@ const MUSIC = (function(){
       voice(th.root - 12, spb * 4.6, "sine", th.gain * 1.1, 0);
     }
     if (th.drums && (bar === 0 || bar === 2)) thump();
-    if (Math.random() < th.mel) {
-      const oct = 24 + (Math.random() < 0.3 ? 12 : 0);
-      voice(th.root + oct + SCALE[Math.floor(Math.random() * SCALE.length)], spb * (1 + Math.random() * 2), "triangle", th.gain * 0.45, 0);
+    // One slow melody note, halfway through the bar, and always a note from
+    // the chord that is currently sounding — so it can never clash with it.
+    if (th.mel && bar === 2) {
+      const iv = chord[Math.floor(Math.random() * chord.length)];
+      voice(th.root + 24 + iv, spb * 2.2, "triangle", th.gain * 0.38, 0);
     }
     beat++;
     timer = setTimeout(tick, spb * 1000);
@@ -1220,19 +1225,25 @@ const MUSIC = (function(){
   return {
     play: function(name){
       if (!S.settings.music) return;
-      if (cur === name && (timer || audioEl)) return;
-      cur = name; beat = 0;
+      // Already playing this, or already loading it — leave it alone.
+      if (cur === name && (timer || audioEl || pending === name)) return;
+      const mine = ++ticket;
+      cur = name; pending = name; beat = 0;
       stopGenerated(); stopFile();
-      if (!init()) return;
+      if (!init()) { pending = null; return; }
       if (ctx.state === "suspended") { try { ctx.resume(); } catch(e){} }
-      if (useFiles === false) { tick(); return; }
+      if (useFiles === false) { pending = null; tick(); return; }
       tryFile(name).then(a => {
-        if (cur !== name) return;
+        if (mine !== ticket) {           // superseded while loading
+          if (a) { try { a.pause(); } catch(e) {} }
+          return;
+        }
+        pending = null;
         if (a) { useFiles = true; audioEl = a; a.play().catch(() => { audioEl = null; tick(); }); }
         else { if (useFiles === null) useFiles = false; tick(); }
       });
     },
-    stop: function(){ cur = null; stopGenerated(); stopFile(); },
+    stop: function(){ ++ticket; cur = null; pending = null; stopGenerated(); stopFile(); },
     source: function(){
       if (!cur) return "not playing";
       if (audioEl) return "your MP3s";
