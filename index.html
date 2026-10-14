@@ -300,6 +300,12 @@ table.stats td { font-variant-numeric: tabular-nums; }
 .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--amber); border: 0; cursor: pointer; }
 .slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--amber); border: 0; cursor: pointer; }
 .slider:focus-visible { outline: 2px solid var(--atomic); outline-offset: 4px; }
+.backupbox { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; line-height: 1.5; width: 100%; min-height: 7rem; resize: vertical; background: var(--deck-2); color: var(--ink-soft); border: 1px solid var(--edge-hi); border-radius: var(--radius); padding: 0.6rem 0.7rem; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+.backupbox:focus-visible { outline: 2px solid var(--atomic); outline-offset: 2px; }
+.filepick { font-family: "Atkinson Hyperlegible", sans-serif; font-size: 0.85rem; color: var(--ink-soft); }
+.filepick::file-selector-button { font-family: "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--ink); background: var(--deck-2); border: 1px solid var(--edge-hi); border-radius: var(--radius); padding: 0.45rem 0.9rem; margin-right: 0.7rem; cursor: pointer; }
+.okmsg { color: var(--good); font-size: 0.9rem; }
+.errmsg { color: var(--ember); font-size: 0.9rem; }
 #btnPlayer { border-color: var(--amber); color: var(--amber); }
 
 .sitefoot { border-top: 1px solid var(--edge); padding-top: 1rem; margin-top: 0.5rem; font-size: 0.78rem; color: var(--ink-faint); line-height: 1.6; }
@@ -1065,6 +1071,43 @@ function deletePlayer(id){
   if (PLAYERS.activeId === id) PLAYERS.activeId = PLAYERS.list.length ? PLAYERS.list[0].id : null;
   savePlayers();
 }
+/* ---------------- backup / restore ----------------
+   Progress lives in this browser only, and clearing browsing data wipes it.
+   These two turn everything into a file (or a block of text to paste) that
+   can be brought back later, or moved to another computer.             */
+const BACKUP_TAG = "titan-protocol-backup";
+function exportData(){
+  const saves = {};
+  PLAYERS.list.forEach(p => { saves[p.id] = readSave(p.id); });
+  return JSON.stringify({
+    app: BACKUP_TAG, version: 1, exported: new Date().toISOString(),
+    players: PLAYERS.list, activeId: PLAYERS.activeId, saves: saves
+  }, null, 1);
+}
+function importData(text){
+  let d;
+  try { d = JSON.parse(text); }
+  catch(e) { throw new Error("That is not a backup file — the text is not readable."); }
+  if (!d || d.app !== BACKUP_TAG || !Array.isArray(d.players) || !d.players.length)
+    throw new Error("That is not a Titan Protocol backup.");
+  const list = d.players
+    .filter(p => p && p.id && p.name)
+    .map(p => ({ id: String(p.id), name: String(p.name), avatar: AVATARS.indexOf(p.avatar) >= 0 ? p.avatar : AVATARS[0] }));
+  if (!list.length) throw new Error("That backup has no players in it.");
+  // Clear the old saves first so players deleted since the backup do not linger.
+  try {
+    Object.keys(localStorage)
+      .filter(k => k.indexOf(SAVE_PREFIX) === 0)
+      .forEach(k => localStorage.removeItem(k));
+  } catch(e) {}
+  PLAYERS = { list: list, activeId: d.activeId };
+  list.forEach(p => writeSave(p.id, normalise(d.saves && d.saves[p.id])));
+  if (!list.some(p => p.id === PLAYERS.activeId)) PLAYERS.activeId = list[0].id;
+  savePlayers();
+  selectPlayer(PLAYERS.activeId);
+  return list;
+}
+
 function playerStats(id){
   const d = readSave(id);
   let h = 0, m = 0;
@@ -1990,6 +2033,110 @@ function screenCards(){
 /* =========================================================================
    SCREEN: SETTINGS
    ========================================================================= */
+function screenBackup(){
+  T = null;
+  const text = exportData();
+  const stamp = new Date().toISOString().slice(0, 10);
+  const who = PLAYERS.list.map(p => p.name + " (" + playerStats(p.id).chapters + " chapters)").join(", ");
+
+  show('<div class="screen">' +
+    '<div><span class="eyebrow">For grown-ups</span><h2 class="title">Backup &amp; Restore</h2></div>' +
+    '<p class="lede">Progress is kept in this browser only. Clearing browsing data erases it, and it does not follow anyone to another computer. ' +
+    "A backup fixes both — keep the file somewhere safe and you can always put everything back.</p>" +
+
+    '<div class="panel"><span class="eyebrow">Save a backup</span>' +
+    '<p class="lede" style="font-size:0.9rem">This backup holds <strong>' + esc(who) + "</strong>.</p>" +
+    '<div class="row"><button class="primary" id="dl">⬇ Download backup file</button>' +
+    '<button id="copy">Copy the text instead</button></div>' +
+    '<p class="lede" style="font-size:0.82rem">If the download button does nothing — some viewers block downloads — copy the text below into a file instead, and keep it with your documents.</p>' +
+    '<textarea class="backupbox" id="dump" readonly spellcheck="false">' + esc(text) + "</textarea>" +
+    '<div id="copymsg"></div></div>' +
+
+    '<div class="panel"><span class="eyebrow">Restore from a backup</span>' +
+    '<p class="lede" style="font-size:0.9rem">This replaces <em>everyone</em> currently on this browser with whoever is in the backup. You will be asked to confirm first.</p>' +
+    '<input class="filepick" type="file" id="file" accept="application/json,.json,text/plain">' +
+    '<p class="lede" style="font-size:0.82rem">…or paste the backup text here:</p>' +
+    '<textarea class="backupbox" id="paste" spellcheck="false" placeholder="Paste a backup here"></textarea>' +
+    '<div class="row"><button id="restore">Restore from pasted text</button></div>' +
+    '<div id="restoremsg"></div></div>' +
+
+    '<div class="row"><button class="ghost" id="back">← Back to settings</button></div></div>');
+
+  const dump = el("dump");
+  dump.addEventListener("click", e => { e.stopPropagation(); dump.select(); });
+
+  on("back", screenSettings);
+
+  on("dl", e => {
+    e.stopPropagation();
+    try {
+      const blob = new Blob([text], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "titan-protocol-backup-" + stamp + ".json";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+      el("copymsg").innerHTML = '<span class="okmsg">Saved as titan-protocol-backup-' + stamp +
+        ".json — check your Downloads folder. If it is not there, use the copy button.</span>";
+    } catch(err) {
+      el("copymsg").innerHTML = '<span class="errmsg">This viewer blocked the download. Use “Copy the text instead”.</span>';
+    }
+  });
+
+  on("copy", e => {
+    e.stopPropagation();
+    const done = () => { el("copymsg").innerHTML = '<span class="okmsg">Copied. Paste it into a text file and save it.</span>'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => { dump.select(); document.execCommand && document.execCommand("copy"); done(); });
+    } else {
+      dump.select();
+      try { document.execCommand("copy"); done(); }
+      catch(err) { el("copymsg").innerHTML = '<span class="errmsg">Select the text above and copy it by hand.</span>'; }
+    }
+  });
+
+  function applyRestore(raw){
+    let list;
+    try { list = importData(raw); }
+    catch(err) {
+      el("restoremsg").innerHTML = '<span class="errmsg">' + esc(err.message) + "</span>";
+      return;
+    }
+    el("restoremsg").innerHTML = '<span class="okmsg">Restored ' + list.length +
+      " player" + (list.length === 1 ? "" : "s") + ": " + esc(list.map(p => p.name).join(", ")) + ".</span>";
+    setTimeout(screenPlayers, 900);
+  }
+  function confirmRestore(raw){
+    const now = PLAYERS.list.map(p => p.name).join(", ") || "nobody";
+    if (!confirm("Restore from this backup?\n\nIt will replace everyone currently on this browser (" +
+                 now + ") and all of their progress. This cannot be undone.")) return;
+    applyRestore(raw);
+  }
+
+  const file = el("file");
+  file.addEventListener("click", e => e.stopPropagation());
+  file.addEventListener("change", () => {
+    const f = file.files && file.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => confirmRestore(String(r.result));
+    r.onerror = () => { el("restoremsg").innerHTML = '<span class="errmsg">Could not read that file.</span>'; };
+    r.readAsText(f);
+  });
+
+  const paste = el("paste");
+  paste.addEventListener("click", e => e.stopPropagation());
+  paste.addEventListener("keydown", e => e.stopPropagation());
+  on("restore", e => {
+    e.stopPropagation();
+    const raw = paste.value.trim();
+    if (!raw) { el("restoremsg").innerHTML = '<span class="errmsg">Paste a backup into the box first.</span>'; return; }
+    confirmRestore(raw);
+  });
+}
+
 function screenSettings(){
   T = null;
   const s = S.settings;
@@ -2025,6 +2172,7 @@ function screenSettings(){
     growUpBlock() +
     '<p class="lede" style="font-size:0.85rem">These settings and this progress belong to this player only. Everyone else keeps their own.</p>' +
     '<div class="row"><button id="players">Switch player</button>' +
+    '<button id="backup">Backup &amp; restore</button>' +
     '<button id="reset" class="ghost">Erase this player\'s progress</button></div></div></div>');
 
   const flip = (id, get, set) => on(id, () => { set(!get()); save(); applySettings(); screenSettings(); });
@@ -2056,6 +2204,7 @@ function screenSettings(){
   on("sizeUp", () => { s.typeSize = Math.min(3.4, s.typeSize + 0.2); save(); applySettings(); screenSettings(); });
   on("sizeDown", () => { s.typeSize = Math.max(1.1, s.typeSize - 0.2); save(); applySettings(); screenSettings(); });
   on("players", screenPlayers);
+  on("backup", screenBackup);
   on("reset", () => {
     const p = activePlayer();
     if (confirm("Erase " + (p ? p.name + "'s" : "all") + " progress, chapters, dossiers and stats?\n\n" +
